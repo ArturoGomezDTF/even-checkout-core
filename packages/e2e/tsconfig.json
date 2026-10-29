@@ -1,0 +1,4 @@
+{
+  "extends": "@even/tsconfig/library.json",
+  "include": ["src"]
+}

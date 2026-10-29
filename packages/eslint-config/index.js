@@ -10,5 +10,5 @@ export default defineConfig([
     // Todas las apps usan App Router; sin esto la regla busca un directorio pages/ en cada paquete.
     rules: { "@next/next/no-html-link-for-pages": "off" },
   },
-  globalIgnores([".next/**", "out/**", "build/**", "dist/**", "next-env.d.ts"]),
+  globalIgnores([".next/**", ".next-e2e/**", "out/**", "build/**", "dist/**", "next-env.d.ts", "playwright-report/**", "test-results/**"]),
 ]);

@@ -1,5 +1,6 @@
 node_modules
 .next
+.next-e2e
 out
 dist
 build
@@ -12,3 +13,6 @@ next-env.d.ts
 .vercel
 .DS_Store
 npm-debug.log*
+playwright-report
+test-results
+blob-report

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PACKAGE_NAME as apiClient } from "@even/api-client";
 import { PACKAGE_NAME as payments } from "@even/payments";
 import { PACKAGE_NAME as ui } from "@even/ui";
@@ -12,6 +13,9 @@ export default function Home() {
           <li key={name}>{name}</li>
         ))}
       </ul>
+      <Link href="/pagos" className="mt-6 inline-block text-blue-600 hover:underline">
+        Métodos de pago
+      </Link>
     </main>
   );
 }

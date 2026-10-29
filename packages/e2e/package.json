@@ -1,0 +1,26 @@
+{
+  "name": "@even/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Config compartida de Playwright y mocks de even-backend para los tests E2E de las apps.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@playwright/test": "1.63.0"
+  },
+  "devDependencies": {
+    "@even/eslint-config": "*",
+    "@even/payments": "*",
+    "@even/tsconfig": "*",
+    "@playwright/test": "1.63.0",
+    "@types/node": "^22",
+    "eslint": "^9",
+    "typescript": "^5.9.3"
+  }
+}

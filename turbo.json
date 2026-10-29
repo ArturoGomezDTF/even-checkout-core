@@ -12,6 +12,12 @@
     "test": {
       "outputs": []
     },
+    "e2e": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": ["playwright-report/**", "test-results/**"],
+      "passThroughEnv": ["CI", "PLAYWRIGHT_*"]
+    },
     "dev": {
       "cache": false,
       "persistent": true
