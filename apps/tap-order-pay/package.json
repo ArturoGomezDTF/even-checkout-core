@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@even/api-client": "*",
@@ -21,8 +22,10 @@
     "react-world-flags": "^1.6.0"
   },
   "devDependencies": {
+    "@even/e2e": "*",
     "@even/eslint-config": "*",
     "@even/tsconfig": "*",
+    "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22",
     "@types/react": "^19",
