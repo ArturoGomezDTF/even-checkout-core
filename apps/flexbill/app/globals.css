@@ -1,80 +1,10 @@
 @import "tailwindcss";
 
-:root {
-  /* Even — fondo claro neutro (Offwhite) + texto Evergreen */
-  --background: #fefeeb;
-  --foreground: #023828;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-
-  /* Even — paleta de marca (mismos nombres que el landing) */
-  --color-even-grass: #82e657; /* primario — CTAs, marca, éxito */
-  --color-even-evergreen: #023828; /* fondos oscuros / texto */
-  --color-even-shamrock: #299e66; /* acento medio */
-  --color-even-aqua: #c3feff; /* highlights */
-  --color-even-offwhite: #fefeeb; /* fondo claro neutro */
-  --color-even-ink: #141512;
-
-  /* grises de UI — superficies, bordes y texto secundario */
-  --color-surface: #f9f9f9; /* fondos de chips/inputs */
-  --color-stroke: #8e8e8e; /* bordes y divisiones */
-  --color-stroke-soft: #bfbfbf; /* bordes de inputs */
-  --color-muted: #6b7280; /* texto secundario legible */
-
-  /* semánticos — el producto consume estos, no hex sueltos */
-  --color-primary: #023828;
-  --color-accent: #82e657;
-  --color-success: #82e657;
-
-  /* tipografía — DM Mono como voz funcional; Jakarta = display (sustituto de Noka) */
-  --font-sans: var(--font-dm-mono);
-  --font-mono: var(--font-dm-mono);
-  --font-display: var(--font-jakarta);
-}
-
-/* Theming Even deliberado: no invertimos con el dark del SO. */
-
-html {
-  min-height: 100%;
-  min-height: -webkit-fill-available;
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family:
-    var(--font-dm-mono),
-    ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
-  min-height: 100vh;
-  min-height: -webkit-fill-available;
-}
-
-/* Híbrido tipográfico: titulares en display (Jakarta → Noka), resto DM Mono */
-h1,
-h2 {
-  font-family: var(--font-jakarta), system-ui, sans-serif;
-  letter-spacing: -0.015em;
-}
+@import "@even/ui/theme.css";
 
 /* Fondo Evergreen de marca con asterisco watermark (llena el vacío, da aire) */
 .brand-evergreen {
   background-color: #023828;
-}
-
-/* Highlight tipo marcador (recurso de marca): texto Evergreen sobre Icy Aqua */
-.even-highlight {
-  background-color: #c3feff;
-  color: #023828;
-  padding: 0 0.28em;
-  border-radius: 2px;
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
 }
 
 /* Banner responsivo - coincide con admin-portal simulation */
@@ -91,16 +21,6 @@ h2 {
     background-repeat: no-repeat !important;
     background-color: #f8f9fa;
   }
-}
-
-/* Ocultar scrollbar pero mantener funcionalidad de scroll */
-.scrollbar-hide {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none; /* Chrome, Safari and Opera */
 }
 
 /* Fly to cart animation */
