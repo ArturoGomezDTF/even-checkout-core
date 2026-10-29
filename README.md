@@ -11,13 +11,26 @@ apps/
 packages/
   payments/           @even/payments    Flujo de pago con Ecart Pay, tarjetas, Apple Pay, CardScanner
   api-client/         @even/api-client  Cliente HTTP tipado para even-backend
-  ui/                 @even/ui          Carrito, modales de promociones, customizaciones, marca
+  ui/                 @even/ui          Primitivas de UI (Button, Input, Modal, layout...), tema de Tailwind y marca
   e2e/                @even/e2e         Config de Playwright y mocks de even-backend para tests E2E
   tsconfig/           @even/tsconfig    Configuración base de TypeScript
   eslint-config/      @even/eslint-config  Reglas de ESLint compartidas
 ```
 
 Los paquetes `@even/*` exportan TypeScript fuente y cada app los compila con `transpilePackages`; no hay paso de build por paquete.
+
+## UI compartida
+
+Cada app importa el tema de `@even/ui` justo después de Tailwind y carga las fuentes con `next/font`
+(variables `--font-dm-mono` y `--font-jakarta`, ver `apps/checkout-demo/src/app/layout.tsx`):
+
+```css
+@import "tailwindcss";
+@import "@even/ui/theme.css";
+```
+
+El tema trae los colores de marca (`even-grass`, `even-evergreen`...), los semánticos (`primary`, `muted`, `danger`...),
+animaciones y utilidades (`scrollbar-hide`, `even-highlight`, `min-h-screen-safe`). El catálogo vive en `/ui` de `checkout-demo`.
 
 ## Stack
 
