@@ -6,7 +6,7 @@ test("la raíz redirige al menú de la habitación por defecto", async ({ page }
   await page.goto("/");
 
   await expect(page).toHaveURL(MENU_URL);
-  await expect(page).toHaveTitle("Even Room Service");
+  await expect(page).toHaveTitle("Hotel E2E | Room Service");
   await expect(page.getByText("Habitación 40")).toBeVisible();
   await expect(page.getByText("Club sándwich", { exact: false }).first()).toBeVisible();
   await expect(page.getByText("$180.00 MXN")).toBeVisible();
