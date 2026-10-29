@@ -1,6 +1,7 @@
 import { PACKAGE_NAME as apiClient } from "@even/api-client";
 import { PACKAGE_NAME as payments } from "@even/payments";
 import { PACKAGE_NAME as ui } from "@even/ui";
+import Link from "next/link";
 
 // App de prueba: confirma que una app del monorepo consume los paquetes compartidos.
 export default function Home() {
@@ -12,6 +13,9 @@ export default function Home() {
           <li key={name}>{name}</li>
         ))}
       </ul>
+      <Link href="/ui" className="mt-6 inline-block underline">
+        Ver catálogo de @even/ui
+      </Link>
     </main>
   );
 }
