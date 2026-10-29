@@ -149,7 +149,10 @@
       "cardExpired": "Tu tarjeta está vencida. Por favor agrega una tarjeta vigente.",
       "invalidCardNumber": "Número de tarjeta inválido.",
       "unknownPaymentError": "Ocurrió un error al procesar el pago. Por favor intenta de nuevo."
-    }
+    },
+    "paymentRejectedTitle": "Pago rechazado",
+    "paymentRejectedMessage": "No pudimos procesar el pago con esta tarjeta. Intenta con otra tarjeta.",
+    "walletUnavailableMessage": "Apple Pay y Google Pay no están disponibles para este pedido. Paga con una tarjeta guardada."
   },
   "AddCardPage": {
     "title": "Agrega tu tarjeta para continuar",

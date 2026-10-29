@@ -149,7 +149,10 @@
       "cardExpired": "Your card has expired. Please add a valid card.",
       "invalidCardNumber": "Invalid card number.",
       "unknownPaymentError": "An error occurred while processing the payment. Please try again."
-    }
+    },
+    "paymentRejectedTitle": "Payment rejected",
+    "paymentRejectedMessage": "We couldn't process the payment with this card. Try another card.",
+    "walletUnavailableMessage": "Apple Pay and Google Pay are not available for this order. Pay with a saved card."
   },
   "AddCardPage": {
     "title": "Add your card to continue",
