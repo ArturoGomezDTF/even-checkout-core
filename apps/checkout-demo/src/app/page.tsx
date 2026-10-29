@@ -13,9 +13,14 @@ export default function Home() {
           <li key={name}>{name}</li>
         ))}
       </ul>
-      <Link href="/ui" className="mt-6 inline-block underline">
-        Ver catálogo de @even/ui
-      </Link>
+      <nav className="mt-6 flex flex-col gap-2">
+        <Link href="/ui" className="underline">
+          Ver catálogo de @even/ui
+        </Link>
+        <Link href="/pagos" className="underline">
+          Métodos de pago
+        </Link>
+      </nav>
     </main>
   );
 }
