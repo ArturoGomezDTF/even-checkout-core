@@ -21,7 +21,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Typecheck, lint, test y build
-        run: npx turbo run typecheck lint test build
+        run: npx turbo run typecheck lint test build --concurrency=2
         env:
           NEXT_TELEMETRY_DISABLED: "1"
 

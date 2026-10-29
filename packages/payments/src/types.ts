@@ -59,6 +59,12 @@ export interface ProcessPaymentRequest {
   // (promo_redemptions). Nunca se manda junto con userDiscountId.
   promoRedemptionId?: string;
   service?: string;
+  // Flex Bill (dividir cuenta): le permiten al backend recalcular el monto real
+  // a cobrar desde los dish_order de la mesa en vez de confiar en
+  // baseAmount/amount. Opcionales: el resto de las apps no los envía.
+  id_table_order?: string | null;
+  payment_type?: string;
+  selected_item_ids?: string[];
   // Idempotencia de cobro. Ambos opcionales — sin ellos,
   // /payments se comporta exactamente igual que antes.
   intentKey?: string;
@@ -66,8 +72,6 @@ export interface ProcessPaymentRequest {
   // Tap & Pay: identifican la orden (tap_pay_orders) para que el servidor
   // recalcule el monto en vez de cobrar el que manda el cliente. Opcionales.
   id_tap_pay_order?: string;
-  payment_type?: string;
-  selected_item_ids?: string[];
 }
 
 /** Respuesta de POST /payments cuando el cobro se hizo (o se re-jugó). */
@@ -87,6 +91,10 @@ export interface WalletOrderRequest {
   items?: CartItemForPayment[];
   userDiscountId?: string;
   promoRedemptionId?: string;
+  // Flex Bill (dividir cuenta): le permiten al backend recalcular el monto real
+  // a cobrar desde los dish_order de la mesa en vez de confiar en
+  // baseAmount/amount. Opcionales: el resto de las apps no los envía.
+  id_table_order?: string | null;
   // Tap & Pay: identifican la orden (tap_pay_orders) para que el servidor
   // recalcule el monto en vez de cobrar el que manda el cliente. Opcionales.
   id_tap_pay_order?: string;

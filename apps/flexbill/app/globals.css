@@ -1,0 +1,527 @@
+@import "tailwindcss";
+
+@import "@even/ui/theme.css";
+
+/* Fondo Evergreen de marca con asterisco watermark (llena el vacío, da aire) */
+.brand-evergreen {
+  background-color: #023828;
+}
+
+/* Banner responsivo - coincide con admin-portal simulation */
+.banner-mobile {
+  background-size: cover; /* Desktop por defecto */
+}
+
+/* Móvil - altura optimizada (230px) para mejor proporción */
+@media (max-width: 768px) {
+  .banner-mobile {
+    /* Cover llena toda la altura del contenedor reducido */
+    background-size: cover !important;
+    background-position: center center !important; /* Centrado para mejor proporción con altura 230px */
+    background-repeat: no-repeat !important;
+    background-color: #f8f9fa;
+  }
+}
+
+/* Fly to cart animation */
+.flying-to-cart {
+  transform-origin: center center;
+  border-radius: 50%;
+}
+
+@keyframes pulse-button-pink {
+  0% {
+    box-shadow: 0 0 0 0 rgba(130, 230, 87, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(130, 230, 87, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(130, 230, 87, 0);
+  }
+}
+
+.animate-pulse-button-pink {
+  animation: pulse-button-pink 1.5s ease-out infinite;
+}
+
+@keyframes shake-cart {
+  0% {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  50% {
+    transform: translateY(-50%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cart-badge-animate {
+  animation: shake-cart 0.3s ease forwards;
+}
+
+@keyframes bounce-in {
+  0% {
+    opacity: 0;
+    transform: translateY(30px) scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-8px) scale(1.05);
+  }
+  75% {
+    transform: translateY(4px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.5s ease-out forwards;
+}
+
+/* OrderAnimation styles */
+@keyframes expand-circle {
+  0% {
+    transform: scale(0.01);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(35);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes expand-green-from-logo {
+  0% {
+    transform: scale(1);
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(50);
+    opacity: 1;
+  }
+}
+
+@keyframes simple-fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-ring-animation {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.circle-animation {
+  width: 50px;
+  height: 50px;
+  aspect-ratio: 1;
+  background: white;
+  border-radius: 50%;
+  transform: scale(0.01);
+  will-change: transform;
+  animation: expand-circle 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.green-circle-from-logo {
+  width: 96px;
+  height: 96px;
+  background: #82e657;
+  border-radius: 50%;
+  transform-origin: center center;
+  will-change: transform;
+  animation: expand-green-from-logo 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-in;
+}
+
+.animate-simple-fade-in {
+  animation: simple-fade-in 0.4s ease-in forwards;
+}
+
+@keyframes fade-in-out {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  90% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+.animate-fade-in-out {
+  animation: fade-in-out 3s ease-in-out forwards;
+}
+
+.pulse-ring {
+  position: absolute;
+  width: 96px;
+  height: 96px;
+  border: 5px solid #e5e7eb;
+  border-radius: 50%;
+  animation: pulse-ring-animation 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.pulse-ring-delay-1 {
+  animation-delay: 0.6s;
+}
+
+.pulse-ring-delay-2 {
+  animation-delay: 1.2s;
+}
+
+/* Payment success animations */
+@keyframes slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(100px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes logo-fade-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-logo-fade-in {
+  animation: logo-fade-in 0.8s ease-out forwards;
+}
+
+.animated_checkmark svg {
+  width: 100px;
+  display: block;
+  margin: 40px auto 0;
+}
+.animated_checkmark .path {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 0;
+}
+.animated_checkmark .path.circle {
+  -webkit-animation: dash 0.9s ease-in-out;
+  animation: dash 0.9s ease-in-out;
+}
+.animated_checkmark .path.line {
+  stroke-dashoffset: 1000;
+  -webkit-animation: dash 0.9s 0.35s ease-in-out forwards;
+  animation: dash 0.9s 0.35s ease-in-out forwards;
+}
+.animated_checkmark .path.check {
+  stroke-dashoffset: -100;
+  -webkit-animation: dash-check 0.9s 0.35s ease-in-out forwards;
+  animation: dash-check 0.9s 0.35s ease-in-out forwards;
+}
+
+@-webkit-keyframes dash {
+  0% {
+    stroke-dashoffset: 1000;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes dash {
+  0% {
+    stroke-dashoffset: 1000;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+@-webkit-keyframes dash-check {
+  0% {
+    stroke-dashoffset: -100;
+  }
+  100% {
+    stroke-dashoffset: 900;
+  }
+}
+@keyframes dash-check {
+  0% {
+    stroke-dashoffset: 1000;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes fadeInText {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+}
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.animate-slide-down {
+  animation: slideDown 0.5s ease-in-out forwards;
+}
+.animate-fade-out {
+  animation: fadeOut 0.5s ease-in-out forwards;
+}
+
+/* 🔧 Corrección Safari/iOS */
+.animated_checkmark {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
+}
+
+.animated_checkmark .path {
+  will-change: stroke-dashoffset;
+  shape-rendering: geometricPrecision;
+}
+
+.animated_checkmark .path.circle {
+  stroke-dashoffset: 1000;
+  -webkit-animation: dash 0.9s ease-in-out forwards;
+  animation: dash 0.9s ease-in-out forwards;
+}
+
+.animated_checkmark .path.check {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000; /* totalmente oculto */
+  animation: dash-check 0.9s 0.3s ease-in-out forwards;
+}
+
+.animated_checkmark svg {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+@keyframes pulse-button {
+  0% {
+    box-shadow: 0 0 0 0 rgba(130, 230, 87, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(130, 230, 87, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(130, 230, 87, 0);
+  }
+}
+
+.animate-pulse-button {
+  animation: pulse-button 1.5s ease-out infinite;
+}
+
+/* Loader — giro del asterisco Even en pasos (recurso de marca del landing) */
+@keyframes asterisk-spin-steps {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.asterisk-spin {
+  animation: asterisk-spin-steps 1.8s steps(6, end) infinite;
+}
+
+/* Accesibilidad — respetar prefers-reduced-motion (best practice 2026) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Fix para min-height en iOS/Safari - Evita espacio blanco/negro al hacer scroll */
+.min-h-new {
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  position: relative;
+  overflow-x: hidden;
+}
+
+@supports (min-height: 100dvh) {
+  .min-h-new {
+    min-height: 100dvh;
+  }
+}
+
+/* Prevenir el scroll bounce en iOS que causa el espacio blanco */
+.min-h-new {
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Fix para teclado virtual en Safari iOS - Inputs numéricos */
+@supports (-webkit-touch-callout: none) {
+  /* Safari específico */
+  input[type="number"]:focus {
+    font-size: 16px; /* Previene zoom automático en iOS */
+  }
+}
+
+@layer components {
+  .myradio {
+    @apply w-4 h-4 bg-gray-100 border border-gray-300 rounded-full cursor-pointer;
+    @apply focus:outline-none;
+    @apply checked:bg-[#82E657] checked:border-transparent;
+    @apply appearance-none relative;
+  }
+
+  .myradio:checked::before {
+    content: "";
+    @apply absolute inset-0 m-auto w-1.5 h-1.5 bg-white rounded-full;
+  }
+
+  .mycheckbox {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    min-height: 20px;
+    background-color: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 9999px !important;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  .mycheckbox:checked {
+    background-color: #82E657;
+    border-color: #82E657;
+  }
+
+  .mycheckbox:checked::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 45%;
+    width: 5px;
+    height: 9px;
+    border: solid #023828;
+    border-width: 0 2.5px 2.5px 0;
+    transform: translate(-50%, -50%) rotate(45deg);
+  }
+
+  .mycheckbox:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+/* Apple Pay button border radius and height */
+#apple-pay-container apple-pay-button {
+  --apple-pay-button-border-radius: 9999px;
+  height: 48px;
+}
+
+#apple-pay-container > * {
+  border-radius: 9999px !important;
+  height: 48px !important;
+}
+
+/* Google Pay button — same shape and height as Apple Pay */
+#google-pay-container {
+  border-radius: 9999px !important;
+  overflow: hidden !important;
+  height: 48px !important;
+}
+
+#google-pay-container > *,
+#google-pay-container iframe {
+  width: 100% !important;
+  height: 48px !important;
+}
+
+/* Fix para inputs en Safari/iOS - evita deformación y zoom */
+input,
+select,
+textarea {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  font-size: 16px; /* Previene zoom en iOS */
+}
+
+input[type="date"] {
+  -webkit-appearance: none;
+  min-height: 48px;
+}
+
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M2.22 4.47a.75.75 0 0 1 1.06 0L6 7.19l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L2.22 5.53a.75.75 0 0 1 0-1.06z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2.5rem;
+}

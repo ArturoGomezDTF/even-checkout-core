@@ -1,0 +1,21 @@
+{
+  "name": "Even",
+  "short_name": "Even",
+  "description": "Tu menú digital con un toque de NFC",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/even/even-asterisk-grass.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["food", "business"],
+  "lang": "es"
+}

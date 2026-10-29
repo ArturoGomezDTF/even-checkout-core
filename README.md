@@ -12,6 +12,7 @@ apps/
   room-service/       Room Service (migrada desde LetsEven/even-room-service)
   pick-and-go/        Pick & Go (migrada desde LetsEven/even-pick-and-go)
   tap-and-pay/        Tap & Pay (migrada desde LetsEven/even-tap-and-pay)
+  flexbill/           FlexBill: dividir y pagar la cuenta de la mesa (migrada desde LetsEven/even-flexbill)
 packages/
   payments/           @even/payments    Flujo de pago con Ecart Pay, tarjetas, Apple Pay, CardScanner
   api-client/         @even/api-client  Cliente HTTP tipado para even-backend
