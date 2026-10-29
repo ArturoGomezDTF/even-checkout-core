@@ -9,6 +9,7 @@ Cada app se despliega por separado, pero todas comparten el mismo núcleo de che
 apps/
   checkout-demo/      App de prueba que consume los paquetes compartidos
   tap-order-pay/      Tap Order & Pay (migrada desde LetsEven/even-tap-order-pay)
+  room-service/       Room Service (migrada desde LetsEven/even-room-service)
 packages/
   payments/           @even/payments    Flujo de pago con Ecart Pay, tarjetas, Apple Pay, CardScanner
   api-client/         @even/api-client  Cliente HTTP tipado para even-backend

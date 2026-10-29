@@ -34,7 +34,7 @@ test("guarda la tarjeta a través de @even/payments", async ({ page }) => {
   const paymentsApi = await mockTapOrderApi(page);
   await page.goto(ADD_CARD);
   await page.getByPlaceholder("John Doe").fill("Ana Lopez");
-  await page.getByPlaceholder("**** 2098").fill("4242 4242 4242 4242");
+  await page.getByPlaceholder("**** 2098").fill("4000 0566 5566 5556");
   await page.getByPlaceholder("123").fill("123");
 
   const saved = page.waitForRequest((req) => req.method() === "POST" && req.url().endsWith("/payment-methods"));
@@ -43,7 +43,7 @@ test("guarda la tarjeta a través de @even/payments", async ({ page }) => {
 
   expect(paymentsApi.requests).toContainEqual({
     method: "POST",
-    path: "/api/payment-methods",
+    path: "/payment-methods",
     body: expect.objectContaining({ fullName: "Ana Lopez", cvv: "123" }),
   });
 });
