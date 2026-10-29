@@ -215,6 +215,9 @@
     "timeoutConfirmingOrder": "Your payment is taking longer than usual. If you were charged, check your email or contact the restaurant before trying again.",
     "errorUnknown": "Unknown error",
     "processingError": "Error processing payment",
+    "paymentRejectedTitle": "Payment rejected",
+    "paymentRejectedMessage": "We couldn't process the payment with this card. Try another card.",
+    "walletUnavailableMessage": "Apple Pay and Google Pay are not available for this order. Pay with a saved card.",
     "deleteCardErrorTitle": "Error deleting card",
     "deleteCardErrorMessage": "Couldn't delete the card. Please try again.",
     "errors": {

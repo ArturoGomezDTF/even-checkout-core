@@ -6,7 +6,7 @@ export function middleware(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
 
   const backendUrl =
-    process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ||
+    process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, "") ||
     "https://even-backend-production.up.railway.app";
   const isDev = process.env.NODE_ENV === "development";
   const devUrls = isDev ? " http://localhost:5000 ws://localhost:5000" : "";

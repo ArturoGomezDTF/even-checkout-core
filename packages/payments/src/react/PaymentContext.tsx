@@ -45,8 +45,12 @@ export interface PaymentProviderProps {
   getMigratableGuestId?: () => string | null;
   /** Tras migrar las tarjetas. Por defecto borra el guest id de localStorage. */
   onGuestMigrated?: () => void;
-  /** Espera antes de migrar, para que el carrito migre primero. */
-  migrationDelayMs?: number;
+  /**
+   * Espera antes de migrar, para que el carrito migre primero. `null` desactiva
+   * la migración automática: la app llama a `migrateGuestPaymentMethods` cuando
+   * sabe que el carrito terminó (p. ej. con un evento).
+   */
+  migrationDelayMs?: number | null;
 }
 
 const PaymentContext = createContext<PaymentContextValue | undefined>(undefined);
@@ -209,7 +213,8 @@ export function PaymentProvider({
     migrateRef.current = migrateGuestPaymentMethods;
   });
   useEffect(() => {
-    if (!userId || !callbacks.current.getMigratableGuestId()) return;
+    if (!userId || migrationDelayMs === null) return;
+    if (!callbacks.current.getMigratableGuestId()) return;
     const timer = setTimeout(() => void migrateRef.current(), migrationDelayMs);
     return () => clearTimeout(timer);
   }, [userId, migrationDelayMs]);

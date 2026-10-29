@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ||
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, "") ||
   "http://localhost:5000";
 
 export type PaymentProviderCode = "ecartpay" | "clip" | null;

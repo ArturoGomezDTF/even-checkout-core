@@ -17,7 +17,10 @@ import { getCardTypeIcon } from "@/utils/cardIcons";
 import { useBranch } from "@/context/BranchContext";
 import OrderAnimation from "@/components/UI/OrderAnimation";
 import { pickAndGoService } from "@/services/pickandgo.service";
-import { paymentService } from "@/services/payment.service";
+import {
+  isDefinitiveWalletRejection,
+  paymentService,
+} from "@/services/payment.service";
 import { calculateCommissions } from "@/utils/commissionCalculator";
 import { useAccountDiscount } from "@/hooks/useAccountDiscount";
 import { USER_DISCOUNT_SERVICE } from "@/services/userDiscounts.service";
@@ -113,6 +116,9 @@ export default function CardSelectionPage() {
   const [selectedMSI, setSelectedMSI] = useState<number | null>(null);
   const [applePayReady, setApplePayReady] = useState(false);
   const [applePayUnavailable, setApplePayUnavailable] = useState(false);
+  // La orden de wallet fue rechazada de forma definitiva: se ocultan Apple y
+  // Google Pay y se pide pagar con tarjeta guardada.
+  const [walletOrderRejected, setWalletOrderRejected] = useState(false);
   const [isApplePayProcessing, setIsApplePayProcessing] = useState(false);
   const [applePayPaymentId, setApplePayPaymentId] = useState<string | null>(
     null,
@@ -507,6 +513,14 @@ export default function CardSelectionPage() {
             "⚠️ [AP-ORDER] No se pudo crear la orden:",
             orderResult.error ?? orderResult,
           );
+          // Un 4xx con código semántico es un rechazo definitivo (400
+          // baseAmount <= 0, 422 payment_rejected, ...): reintentar con los
+          // mismos datos fallaría igual, así que se cae a tarjeta guardada. Un
+          // 5xx pasajero no oculta la wallet.
+          if (isDefinitiveWalletRejection(orderResult)) {
+            setApplePayUnavailable(true);
+            setWalletOrderRejected(true);
+          }
           applePayListenersRef.current = false;
           return;
         }
@@ -640,6 +654,14 @@ export default function CardSelectionPage() {
             "⚠️ [GP-ORDER] No se pudo crear la orden:",
             orderResult.error ?? orderResult,
           );
+          // Un 4xx con código semántico es un rechazo definitivo (400
+          // baseAmount <= 0, 422 payment_rejected, ...): reintentar con los
+          // mismos datos fallaría igual, así que se cae a tarjeta guardada. Un
+          // 5xx pasajero no oculta la wallet.
+          if (isDefinitiveWalletRejection(orderResult)) {
+            setGooglePayUnavailable(true);
+            setWalletOrderRejected(true);
+          }
           googlePayListenersRef.current = false;
           return;
         }
@@ -1241,6 +1263,20 @@ export default function CardSelectionPage() {
             }
             updateStoredPaymentIntent({ ecartpayOrderId: resolvedId });
             ecartpayOrderId = resolvedId;
+          } else if (code === "payment_rejected") {
+            // Rechazo definitivo (422): no se cobró y repetir con la misma
+            // tarjeta fallaría igual. Se descarta el intento guardado para
+            // que otra tarjeta no reciba el replay del rechazo.
+            clearStoredPaymentIntent();
+            setShowAnimation(false);
+            setCanRetryCharge(true);
+            setErrorTitle(t("paymentRejectedTitle"));
+            setErrorMessage(
+              (typeof paymentResult.error === "object"
+                ? paymentResult.error?.message
+                : undefined) || t("paymentRejectedMessage"),
+            );
+            return;
           } else if (
             code === "payment_unknown" ||
             code === "charge_unconfirmed"
@@ -1727,6 +1763,12 @@ export default function CardSelectionPage() {
                         </button>
                       </div>
                     ))}
+
+                    {walletOrderRejected && (
+                      <p className="text-sm text-gray-600 text-center">
+                        {t("walletUnavailableMessage")}
+                      </p>
+                    )}
 
                     {/* Apple Pay Button */}
                     {!applePayUnavailable &&

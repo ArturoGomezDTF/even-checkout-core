@@ -215,6 +215,9 @@
     "timeoutConfirmingOrder": "Tu pago se está tardando más de lo normal. Si se realizó el cargo, revisa tu correo o contacta al restaurante antes de intentar de nuevo.",
     "errorUnknown": "Error desconocido",
     "processingError": "Error al procesar el pago",
+    "paymentRejectedTitle": "Pago rechazado",
+    "paymentRejectedMessage": "No pudimos procesar el pago con esta tarjeta. Intenta con otra tarjeta.",
+    "walletUnavailableMessage": "Apple Pay y Google Pay no están disponibles para este pedido. Paga con una tarjeta guardada.",
     "deleteCardErrorTitle": "Error al eliminar la tarjeta",
     "deleteCardErrorMessage": "No se pudo eliminar la tarjeta. Intenta de nuevo.",
     "errors": {
