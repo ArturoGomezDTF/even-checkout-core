@@ -2,6 +2,7 @@ import { PACKAGE_NAME as apiClient } from "@even/api-client";
 import { PACKAGE_NAME as payments } from "@even/payments";
 import { PACKAGE_NAME as ui } from "@even/ui";
 import Link from "next/link";
+import { ScannerDemo } from "./ScannerDemo";
 
 // App de prueba: confirma que una app del monorepo consume los paquetes compartidos.
 export default function Home() {
@@ -21,6 +22,7 @@ export default function Home() {
           Métodos de pago
         </Link>
       </nav>
+      <ScannerDemo />
     </main>
   );
 }
