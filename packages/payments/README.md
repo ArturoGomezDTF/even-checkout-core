@@ -35,4 +35,35 @@ if (outcome.status === "charged") {
 | `wallet.ts` | `isDefinitiveWalletRejection` para ocultar Apple/Google Pay solo ante rechazos 4xx definitivos. |
 | `ecartpay.ts` | Tipos del SDK de EcartPay, carga y normalización del resultado de `Pay.Checkout.create`. |
 
-Pendiente (siguiente PR): hooks/componentes de React (`useEcartPay`, `PaymentContext`, `CardScanner`) y adoptar el paquete en las apps.
+## `@even/payments/react`
+
+Hooks y componentes de React en un subpath aparte, para que el núcleo siga sin depender de React. No usan `next-intl` ni los contextos de auth de cada app: todo se inyecta por props.
+
+```tsx
+import { PaymentProvider, usePayment, useEcartPay, CardScanner } from "@even/payments/react";
+
+<PaymentProvider
+  service={paymentService}
+  userId={user?.id ?? null}
+  guestId={isGuest ? guestId : null}
+  onUserSession={(id) => { if (isGuest) setAsAuthenticated(id); /* limpiar llaves de mesa */ }}
+>
+  {children}
+</PaymentProvider>
+
+const t = useTranslations("CardScanner");
+<CardScanner
+  labels={{ title: t("title"), subtitle: t("subtitle"), scanningCta: t("scanningCta"),
+            errorCameraAccess: t("errorCameraAccess"), errorScan: t("errorScan") }}
+  onScanSuccess={fill}
+  onClose={close}
+/>
+```
+
+| Export | Notas |
+| --- | --- |
+| `useEcartPay` | Misma API que el hook original (`isLoading`, `error`, `createCheckout`, `waitForSDK`, `clearError`). |
+| `PaymentProvider` / `usePayment` / `useHasPaymentMethods` | Misma API del contexto original. Migra tarjetas de invitado al iniciar sesión (espera `migrationDelayMs`, 1500 ms, para que el carrito migre primero) y borra `even-guest-id` solo si la migración tuvo éxito. Descarta respuestas de una sesión anterior. |
+| `CardScanner` | `labels` (por defecto `CARD_SCANNER_MESSAGES.es`) y `scan` inyectable; por defecto `simulateCardScan`, igual que hoy mientras no se integra Dyneti. |
+
+Los estilos usan Tailwind con los tokens `even-grass` / `even-evergreen`; la app debe escanear el paquete: `@source "<ruta>/packages/payments/src";` en su CSS.
