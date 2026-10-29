@@ -12,6 +12,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests"
   },
+  "dependencies": {
+    "@even/api-client": "*"
+  },
   "devDependencies": {
     "@even/eslint-config": "*",
     "@even/tsconfig": "*",
