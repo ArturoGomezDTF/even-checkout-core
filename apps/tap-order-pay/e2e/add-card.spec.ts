@@ -43,7 +43,7 @@ test("guarda la tarjeta a través de @even/payments", async ({ page }) => {
 
   expect(paymentsApi.requests).toContainEqual({
     method: "POST",
-    path: "/api/payment-methods",
+    path: "/payment-methods",
     body: expect.objectContaining({ fullName: "Ana Lopez", cvv: "123" }),
   });
 });

@@ -53,6 +53,7 @@ function readBody(request: Request): unknown {
  */
 export async function mockPaymentsApi(page: Page, options: PaymentsApiOptions = {}): Promise<PaymentsApiMock> {
   const apiUrl = options.apiUrl ?? E2E_API_URL;
+  const apiPath = new URL(apiUrl).pathname.replace(/\/$/, "");
   let methods = [...(options.paymentMethods ?? [visaCard, mastercardCard])];
   const overrides = new Map<string, MockResponse>();
   const requests: RecordedRequest[] = [];
@@ -114,7 +115,8 @@ export async function mockPaymentsApi(page: Page, options: PaymentsApiOptions = 
       if (method === "OPTIONS") {
         return route.fulfill({ status: 204 });
       }
-      const path = new URL(request.url()).pathname;
+      // Relativo a `apiUrl`, que puede traer path (p.ej. `https://host/api`).
+      const path = new URL(request.url()).pathname.slice(apiPath.length);
       const body = readBody(request);
       requests.push({ method, path, body });
 
