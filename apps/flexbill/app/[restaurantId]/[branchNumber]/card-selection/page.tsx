@@ -17,7 +17,9 @@ import PaymentStatusVideo, {
 } from "@/app/components/UI/PaymentStatusVideo";
 import { useValidateAccess } from "@/app/hooks/useValidateAccess";
 import ValidationError from "@/app/components/ValidationError";
+import { extractPaymentMethods } from "@even/payments/react";
 import {
+  isDefinitiveWalletRejection,
   paymentService,
   type FlexBillBreakdown,
 } from "@/app/services/payment.service";
@@ -37,6 +39,13 @@ import { useMsiConfig } from "@/app/hooks/useMsiConfig";
 
 // Google Pay deshabilitado temporalmente — cambiar a false para reactivarlo.
 const GOOGLE_PAY_DISABLED = true;
+
+// Forma de `payment` / `order` en la respuesta de /payments que usa esta página.
+interface PaymentBody {
+  id?: string;
+  payLink?: string;
+  flexBillBreakdown?: FlexBillBreakdown;
+}
 
 // Cadencia del polling de "¿ya se cobró?" en payment_in_progress.
 const POLL_INTERVAL_MS = 3000;
@@ -248,6 +257,9 @@ export default function CardSelectionPage() {
   useEffect(() => stopGooglePay3dsWatch, []);
   const [applePayReady, setApplePayReady] = useState(false);
   const [applePayUnavailable, setApplePayUnavailable] = useState(false);
+  // La orden de wallet fue rechazada de forma definitiva: se ocultan Apple y
+  // Google Pay y se pide pagar con tarjeta guardada.
+  const [walletOrderRejected, setWalletOrderRejected] = useState(false);
   const [isApplePayProcessing, setIsApplePayProcessing] = useState(false);
   const [googlePayReady, setGooglePayReady] = useState(false);
   const [googlePayUnavailable, setGooglePayUnavailable] = useState<boolean>(
@@ -874,6 +886,14 @@ export default function CardSelectionPage() {
           (orderResult as any).orderId ?? orderResult.data?.orderId;
         if (!orderResult.success || !appleOrderId) {
           console.warn("⚠️ Apple Pay: no se pudo crear la orden", orderResult);
+          // Un 4xx con código semántico es un rechazo definitivo (400
+          // baseAmount <= 0, 422 payment_rejected, ...): reintentar con los
+          // mismos datos fallaría igual, así que se cae a tarjeta guardada. Un
+          // 5xx pasajero no oculta la wallet.
+          if (isDefinitiveWalletRejection(orderResult)) {
+            setApplePayUnavailable(true);
+            setWalletOrderRejected(true);
+          }
           applePayListenersRef.current = false;
           return;
         }
@@ -1014,6 +1034,11 @@ export default function CardSelectionPage() {
           (orderResult as any).orderId ?? orderResult.data?.orderId;
         if (!orderResult.success || !googleOrderId) {
           console.warn("⚠️ Google Pay: no se pudo crear la orden", orderResult);
+          // Ver Apple Pay: solo un 4xx definitivo oculta la wallet.
+          if (isDefinitiveWalletRejection(orderResult)) {
+            setGooglePayUnavailable(true);
+            setWalletOrderRejected(true);
+          }
           googlePayListenersRef.current = false;
           return;
         }
@@ -1086,8 +1111,7 @@ export default function CardSelectionPage() {
         // y solo emite "success" si el iframe manda postMessage; la página de
         // recibo de EcartPay no lo manda, así que confirmamos por polling.
         const isOrderPaid = async () => {
-          const result = await paymentService.getOrderStatus(googleOrderId);
-          const status = result.success ? result.data?.status : null;
+          const status = await paymentService.getEcartOrderStatus(googleOrderId);
           return !!status && WALLET_PAYMENT_PAID_STATUSES.includes(status);
         };
         const finishFromOverlay = () => {
@@ -1189,10 +1213,9 @@ export default function CardSelectionPage() {
       }
 
       try {
-        const statusResult = await paymentService.getOrderStatus(
+        const status = await paymentService.getEcartOrderStatus(
           pending.ecartpayOrderId,
         );
-        const status = statusResult.success ? statusResult.data?.status : null;
 
         if (status && WALLET_PAYMENT_PAID_STATUSES.includes(status)) {
           console.warn(
@@ -1275,10 +1298,8 @@ export default function CardSelectionPage() {
         );
       }
 
-      if (
-        !paymentMethodsResult.data?.paymentMethods ||
-        paymentMethodsResult.data.paymentMethods.length === 0
-      ) {
+      const paymentMethods = extractPaymentMethods(paymentMethodsResult);
+      if (paymentMethods.length === 0) {
         // No payment methods, redirect to add card page
         setIsProcessing(false);
         setPaymentStatus(null);
@@ -1304,7 +1325,6 @@ export default function CardSelectionPage() {
       }
 
       // Determinar qué método de pago usar
-      const paymentMethods = paymentMethodsResult.data.paymentMethods;
       let paymentMethodToUse;
 
       if (!isGuest && selectedPaymentMethodId) {
@@ -1453,6 +1473,18 @@ export default function CardSelectionPage() {
             }
             updateStoredPaymentIntent({ ecartpayOrderId: resolvedId });
             ecartpayOrderId = resolvedId;
+          } else if (code === "payment_rejected") {
+            // Rechazo definitivo (422): no se cobró y repetir con la misma
+            // tarjeta fallaría igual. Se descarta el intento guardado para
+            // que otra tarjeta no reciba el replay del rechazo.
+            clearStoredPaymentIntent();
+            setErrorTitle(t("paymentRejectedTitle"));
+            setErrorMessage(
+              paymentResult.error?.message || t("paymentRejectedMessage"),
+            );
+            setCanRetryCharge(true);
+            setPaymentStatus(null);
+            return;
           } else if (
             code === "payment_unknown" ||
             code === "charge_unconfirmed"
@@ -1475,8 +1507,13 @@ export default function CardSelectionPage() {
         } else {
           // Éxito directo o replay de un intento anterior — misma forma de
           // respuesta en ambos casos, no hace falta distinguirlos aquí.
-          const payment = paymentResult.data?.payment;
-          const order = paymentResult.data?.order;
+          // El cliente compartido devuelve el cuerpo de /payments en la raíz.
+          const body = paymentResult as {
+            payment?: PaymentBody;
+            order?: PaymentBody;
+          };
+          const payment = body.payment;
+          const order = body.order;
 
           // Check if we have a payLink (fallback a verificación de EcartPay)
           // — flujo async/redirect, no pasa por la protección de intentKey
@@ -1484,7 +1521,9 @@ export default function CardSelectionPage() {
           const payLink = order?.payLink || payment?.payLink;
           if (!payLink) {
             ecartpayOrderId = payment?.id ?? order?.id ?? null;
-            flexBillBreakdownFromPayment = payment?.flexBillBreakdown ?? null;
+            flexBillBreakdownFromPayment =
+              (payment?.flexBillBreakdown as FlexBillBreakdown | undefined) ??
+              null;
             if (ecartpayOrderId) {
               updateStoredPaymentIntent({ ecartpayOrderId });
             }
@@ -1905,6 +1944,12 @@ export default function CardSelectionPage() {
                           )}
                         </div>
                       ))}
+
+                    {walletOrderRejected && (
+                      <p className="text-sm text-gray-600 text-center">
+                        {t("walletUnavailableMessage")}
+                      </p>
+                    )}
 
                     {/* Apple Pay Button */}
                     {!applePayUnavailable &&

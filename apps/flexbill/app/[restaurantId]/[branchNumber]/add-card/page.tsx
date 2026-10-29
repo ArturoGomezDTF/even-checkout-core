@@ -12,6 +12,8 @@ import { useGuest, useIsGuest } from "@/app/context/GuestContext";
 import { usePayment } from "@/app/context/PaymentContext";
 import { getRestaurantData } from "@/app/utils/restaurantData";
 import { apiService } from "@/app/utils/api";
+import { paymentService } from "@/app/services/payment.service";
+import type { PaymentMethod } from "@even/payments";
 import MenuHeaderBack from "@/app/components/headers/MenuHeaderBack";
 import CardScanner from "@/app/components/CardScanner";
 import Loader from "@/app/components/UI/Loader";
@@ -139,7 +141,7 @@ function AddCardContent() {
         apiService.setGuestInfo(guestId, tableNumber.toString());
       }
 
-      const result = await apiService.addPaymentMethod({
+      const result = await paymentService.addPaymentMethod({
         fullName,
         cardNumber,
         expDate,
@@ -147,8 +149,12 @@ function AddCardContent() {
       });
 
       if (result.success) {
-        if (result.data?.paymentMethod) {
-          addPaymentMethod(result.data.paymentMethod);
+        // El backend responde { success, paymentMethod } en la raíz.
+        const added =
+          result.data?.paymentMethod ??
+          (result as { paymentMethod?: PaymentMethod }).paymentMethod;
+        if (added) {
+          addPaymentMethod(added);
         } else {
           await refreshPaymentMethods();
         }

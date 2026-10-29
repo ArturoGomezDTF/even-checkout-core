@@ -1,4 +1,21 @@
-import { apiService, type ApiResponse } from "@/app/utils/api";
+import { createPaymentService } from "@even/payments";
+import type { ApiResponse } from "@even/api-client";
+import { apiService } from "@/app/utils/api";
+import { requestWithAuth } from "./request-helper";
+
+export type { ApiResponse } from "@even/api-client";
+export {
+  isDefinitiveWalletRejection,
+  type AddPaymentMethodRequest,
+  type CartItemForPayment,
+  type MsiConfig,
+  type MsiOption,
+  type PaymentHistory,
+  type PaymentIntentStatus,
+  type PaymentIntentStatusResponse,
+  type PaymentMethod,
+  type ProcessPaymentRequest,
+} from "@even/payments";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
@@ -52,51 +69,6 @@ export interface RecordPaymentTransactionParams {
   subtotal_for_commission: number;
   currency: string;
   transaction_by?: string;
-}
-
-export interface CartItemForPayment {
-  name: string;
-  price: number;
-  quantity: number;
-  extraPrice?: number;
-}
-
-export interface MsiOption {
-  months: number;
-  rate: number;
-  minAmount: number;
-  fixedInstallments: boolean;
-}
-
-export interface MsiConfig {
-  isActive: boolean;
-  visaMc: MsiOption[];
-  amex: MsiOption[];
-}
-
-export interface ProcessPaymentParams {
-  paymentMethodId: string;
-  amount: number;
-  currency: string;
-  description: string;
-  orderId: string;
-  tableNumber: string | undefined;
-  restaurantId: string;
-  installments?: number;
-  baseAmount?: number;
-  tipAmount?: number;
-  items?: CartItemForPayment[];
-  // Flex Bill: le permiten al backend recalcular el monto real a cobrar
-  // desde los dish_order de la mesa en vez de confiar en baseAmount/amount
-  // (que puede haberse quedado desactualizado) — ver processPayment en
-  // paymentController.js / computeFlexBillAmountDue en flexBillService.js.
-  id_table_order?: string | null;
-  payment_type?: string;
-  selected_item_ids?: string[];
-  // Idempotencia de cobro. Ambos opcionales — sin ellos,
-  // /payments se comporta exactamente igual que antes.
-  intentKey?: string;
-  fingerprint?: string;
 }
 
 // Breakdown real ya cobrado que devuelve /api/payments cuando el pago es de
@@ -161,8 +133,14 @@ async function makeRequest(
   };
 }
 
-// Servicio para manejar operaciones de pago
+// Endpoints de pago compartidos (tarjetas, /payments, wallets, intents) salen de
+// @even/payments. Aquí quedan los de mesa de Flex Bill (unirse, pagar monto o
+// platillos, registrar la transacción), que viajan con x-table-session.
+const sharedPaymentService = createPaymentService(requestWithAuth);
+
 export const paymentService = {
+  ...sharedPaymentService,
+
   // Marca un platillo como pagado
   async payDishOrder(
     dishOrderId: string,
@@ -232,16 +210,6 @@ export const paymentService = {
     await apiService.recordPaymentTransaction(params);
   },
 
-  // Obtiene los métodos de pago del usuario
-  async getPaymentMethods() {
-    return await apiService.getPaymentMethods();
-  },
-
-  // Procesa un pago con un método de pago específico
-  async processPayment(params: ProcessPaymentParams) {
-    return await apiService.processPayment(params);
-  },
-
   // Paga múltiples platillos de un usuario
   async payUserDishes(
     dishOrders: any[],
@@ -277,72 +245,5 @@ export const paymentService = {
         throw error;
       }
     }
-  },
-
-  // Crea una orden en Ecart Pay para Apple Pay y regresa el orderId
-  async createApplePayOrder(params: {
-    amount: number;
-    currency: string;
-    tableNumber?: string;
-    restaurantId?: string;
-    baseAmount?: number;
-    tipAmount?: number;
-    items?: CartItemForPayment[];
-    id_table_order?: string | null;
-    payment_type?: string;
-    selected_item_ids?: string[];
-  }): Promise<ApiResponse<{ orderId: string }>> {
-    return makeRequest("/payments/apple-pay/order", {
-      method: "POST",
-      body: JSON.stringify(params),
-    });
-  },
-
-  // Crea una orden en Ecart Pay para Google Pay y regresa el orderId
-  async createGooglePayOrder(params: {
-    amount: number;
-    currency: string;
-    tableNumber?: string;
-    restaurantId?: string;
-    baseAmount?: number;
-    tipAmount?: number;
-    items?: CartItemForPayment[];
-    id_table_order?: string | null;
-    payment_type?: string;
-    selected_item_ids?: string[];
-  }): Promise<ApiResponse<{ orderId: string }>> {
-    return makeRequest("/payments/google-pay/order", {
-      method: "POST",
-      body: JSON.stringify(params),
-    });
-  },
-
-  // Consulta el estado real de una orden en EcartPay — para reconciliar pagos
-  // de Apple/Google Pay cuyo callback in-page se haya perdido
-  async getOrderStatus(
-    orderId: string,
-  ): Promise<ApiResponse<{ status: string | null }>> {
-    return makeRequest(`/payments/orders/${orderId}/status`);
-  },
-
-  // Migra los métodos de pago de guest a usuario autenticado
-  async migrateGuestPaymentMethods(
-    guestId: string,
-  ): Promise<ApiResponse<{ migratedCount: number }>> {
-    return apiService.migrateGuestPaymentMethods(guestId);
-  },
-
-  // Consulta el estado de un intento de cobro — para el
-  // polling de "Verificando tu pago…" en vez de reintentar /payments.
-  async getPaymentIntentStatus(intentKey: string) {
-    return apiService.getPaymentIntentStatus(intentKey);
-  },
-
-  async getMsiConfiguration(): Promise<ApiResponse<MsiConfig>> {
-    const result = await makeRequest("/payments/installment-config");
-    if (result.success && result.data) {
-      return { success: true, data: result.data.data ?? result.data };
-    }
-    return result;
   },
 };

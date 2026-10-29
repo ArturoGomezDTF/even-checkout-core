@@ -59,6 +59,12 @@ export interface ProcessPaymentRequest {
   // (promo_redemptions). Nunca se manda junto con userDiscountId.
   promoRedemptionId?: string;
   service?: string;
+  // Flex Bill (dividir cuenta): le permiten al backend recalcular el monto real
+  // a cobrar desde los dish_order de la mesa en vez de confiar en
+  // baseAmount/amount. Opcionales: el resto de las apps no los envía.
+  id_table_order?: string | null;
+  payment_type?: string;
+  selected_item_ids?: string[];
   // Idempotencia de cobro. Ambos opcionales — sin ellos,
   // /payments se comporta exactamente igual que antes.
   intentKey?: string;
@@ -82,6 +88,12 @@ export interface WalletOrderRequest {
   items?: CartItemForPayment[];
   userDiscountId?: string;
   promoRedemptionId?: string;
+  // Flex Bill (dividir cuenta): le permiten al backend recalcular el monto real
+  // a cobrar desde los dish_order de la mesa en vez de confiar en
+  // baseAmount/amount. Opcionales: el resto de las apps no los envía.
+  id_table_order?: string | null;
+  payment_type?: string;
+  selected_item_ids?: string[];
 }
 
 export type PaymentIntentStatus =

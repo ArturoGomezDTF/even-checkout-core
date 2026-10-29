@@ -3,19 +3,6 @@
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
-export interface PaymentMethod {
-  id: string;
-  lastFourDigits: string;
-  cardType: string;
-  cardBrand: string;
-  expiryMonth: number;
-  expiryYear: number;
-  cardholderName: string;
-  isDefault: boolean;
-  createdAt: string;
-  isSystemCard?: boolean;
-}
-
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
@@ -29,13 +16,6 @@ export interface ApiResponse<T = any> {
   // "intent_mismatch") que emite el manejador central de errores del
   // backend en su nivel raíz (even-backend/src/middleware/errorHandler.js).
   code?: string;
-}
-
-export interface AddPaymentMethodRequest {
-  fullName: string;
-  cardNumber: string;
-  expDate: string;
-  cvv: string;
 }
 
 class ApiService {
@@ -274,99 +254,6 @@ class ApiService {
     options: RequestInit = {},
   ): Promise<ApiResponse<T>> {
     return this.makeRequest<T>(endpoint, options);
-  }
-
-  // Payment Methods API
-  async addPaymentMethod(
-    paymentData: AddPaymentMethodRequest,
-  ): Promise<ApiResponse<{ paymentMethod: PaymentMethod }>> {
-    return this.makeRequest("/payment-methods", {
-      method: "POST",
-      body: JSON.stringify(paymentData),
-    });
-  }
-
-  async getPaymentMethods(): Promise<
-    ApiResponse<{ paymentMethods: PaymentMethod[] }>
-  > {
-    return this.makeRequest("/payment-methods");
-  }
-
-  async deletePaymentMethod(
-    paymentMethodId: string,
-  ): Promise<ApiResponse<{ message: string }>> {
-    return this.makeRequest(`/payment-methods/${paymentMethodId}`, {
-      method: "DELETE",
-    });
-  }
-
-  async setDefaultPaymentMethod(
-    paymentMethodId: string,
-  ): Promise<ApiResponse<{ message: string }>> {
-    return this.makeRequest(`/payment-methods/${paymentMethodId}/default`, {
-      method: "PUT",
-    });
-  }
-
-  async migrateGuestPaymentMethods(
-    guestId: string,
-  ): Promise<ApiResponse<{ migratedCount: number }>> {
-    return this.makeRequest("/payment-methods/migrate-from-guest", {
-      method: "POST",
-      body: JSON.stringify({ guestId }),
-    });
-  }
-
-  // Payment Processing API
-  async processPayment(paymentData: {
-    paymentMethodId: string;
-    amount: number;
-    currency?: string;
-    description?: string;
-    orderId?: string;
-    tableNumber?: string;
-    restaurantId?: string;
-    // Ticket #85/#96: idempotencia de cobro. Ambos opcionales — sin ellos,
-    // /payments se comporta exactamente igual que antes.
-    intentKey?: string;
-    fingerprint?: string;
-  }): Promise<ApiResponse<any>> {
-    return this.makeRequest("/payments", {
-      method: "POST",
-      body: JSON.stringify(paymentData),
-    });
-  }
-
-  // Consulta el estado de un intento de cobro — para el
-  // polling de "Verificando tu pago…" en vez de reintentar /payments.
-  // Respuesta plana (status/ecartpay_order_id/... al nivel raíz, no bajo
-  // `data`), a diferencia del resto de este servicio.
-  async getPaymentIntentStatus(intentKey: string): Promise<{
-    success: boolean;
-    status?: "charging" | "charged" | "failed" | "unknown" | "confirmed";
-    ecartpay_order_id?: string | null;
-    order_id?: string | null;
-    amount?: number;
-    currency?: string;
-    updated_at?: string;
-    code?: string;
-  }> {
-    return this.makeRequest(
-      `/payments/intents/${encodeURIComponent(intentKey)}`,
-    ) as unknown as Promise<{
-      success: boolean;
-      status?: "charging" | "charged" | "failed" | "unknown" | "confirmed";
-      ecartpay_order_id?: string | null;
-      order_id?: string | null;
-      amount?: number;
-      currency?: string;
-      updated_at?: string;
-      code?: string;
-    }>;
-  }
-
-  async getPaymentHistory(): Promise<ApiResponse<any>> {
-    return this.makeRequest("/payments/history");
   }
 
   // Payment Transaction Recording API
