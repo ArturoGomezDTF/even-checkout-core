@@ -63,6 +63,11 @@ export interface ProcessPaymentRequest {
   // /payments se comporta exactamente igual que antes.
   intentKey?: string;
   fingerprint?: string;
+  // Tap & Pay: identifican la orden (tap_pay_orders) para que el servidor
+  // recalcule el monto en vez de cobrar el que manda el cliente. Opcionales.
+  id_tap_pay_order?: string;
+  payment_type?: string;
+  selected_item_ids?: string[];
 }
 
 /** Respuesta de POST /payments cuando el cobro se hizo (o se re-jugó). */
@@ -82,6 +87,11 @@ export interface WalletOrderRequest {
   items?: CartItemForPayment[];
   userDiscountId?: string;
   promoRedemptionId?: string;
+  // Tap & Pay: identifican la orden (tap_pay_orders) para que el servidor
+  // recalcule el monto en vez de cobrar el que manda el cliente. Opcionales.
+  id_tap_pay_order?: string;
+  payment_type?: string;
+  selected_item_ids?: string[];
 }
 
 export type PaymentIntentStatus =
