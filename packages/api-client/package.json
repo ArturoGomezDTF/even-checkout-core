@@ -1,0 +1,22 @@
+{
+  "name": "@even/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Cliente HTTP tipado para even-backend.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "@even/eslint-config": "*",
+    "@even/tsconfig": "*",
+    "eslint": "^9",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.4"
+  }
+}

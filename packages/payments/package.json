@@ -1,0 +1,22 @@
+{
+  "name": "@even/payments",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Flujo de pago con Ecart Pay: checkout, tarjetas, Apple Pay y CardScanner.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "@even/eslint-config": "*",
+    "@even/tsconfig": "*",
+    "eslint": "^9",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.4"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "@even/eslint-config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.js"
+  },
+  "dependencies": {
+    "eslint-config-next": "16.4.2"
+  },
+  "peerDependencies": {
+    "eslint": "^9"
+  }
+}
