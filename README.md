@@ -10,6 +10,8 @@ apps/
   checkout-demo/      App de prueba que consume los paquetes compartidos
   tap-order-pay/      Tap Order & Pay (migrada desde LetsEven/even-tap-order-pay)
   room-service/       Room Service (migrada desde LetsEven/even-room-service)
+  pick-and-go/        Pick & Go (migrada desde LetsEven/even-pick-and-go)
+  tap-and-pay/        Tap & Pay (migrada desde LetsEven/even-tap-and-pay)
   flexbill/           FlexBill: dividir y pagar la cuenta de la mesa (migrada desde LetsEven/even-flexbill)
 packages/
   payments/           @even/payments    Flujo de pago con Ecart Pay, tarjetas, Apple Pay, CardScanner

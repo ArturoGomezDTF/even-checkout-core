@@ -124,6 +124,17 @@ describe("PaymentProvider", () => {
     expect(localStorage.getItem("even-guest-id")).toBe("g1");
   });
 
+  it("con migrationDelayMs null no migra solo; la app la dispara", async () => {
+    vi.useFakeTimers();
+    localStorage.setItem("even-guest-id", "g1");
+    const { service, result } = setup({ userId: "u1", migrationDelayMs: null });
+    await act(() => vi.advanceTimersByTimeAsync(5000));
+    expect(service.migrateGuestPaymentMethods).not.toHaveBeenCalled();
+    await act(() => result.current.migrateGuestPaymentMethods());
+    expect(service.migrateGuestPaymentMethods).toHaveBeenCalledWith("g1");
+    expect(localStorage.getItem("even-guest-id")).toBeNull();
+  });
+
   it("usePayment fuera del provider lanza", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     expect(() => renderHook(() => usePayment())).toThrow("PaymentProvider");

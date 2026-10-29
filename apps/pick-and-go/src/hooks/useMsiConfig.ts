@@ -1,0 +1,34 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { paymentService } from "@/services/payment.service";
+import type { MsiConfig } from "@/types/payment.types";
+
+const EMPTY_CONFIG: MsiConfig = { isActive: false, visaMc: [], amex: [] };
+
+export function useMsiConfig() {
+  const [msiConfig, setMsiConfig] = useState<MsiConfig>(EMPTY_CONFIG);
+  const [isMsiLoading, setIsMsiLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const result = await paymentService.getMsiConfiguration();
+        if (!cancelled && result.success && result.data) {
+          setMsiConfig(result.data);
+        }
+      } catch (err) {
+      } finally {
+        if (!cancelled) setIsMsiLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { msiConfig, isMsiLoading };
+}

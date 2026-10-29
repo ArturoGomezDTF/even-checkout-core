@@ -69,6 +69,9 @@ export interface ProcessPaymentRequest {
   // /payments se comporta exactamente igual que antes.
   intentKey?: string;
   fingerprint?: string;
+  // Tap & Pay: identifican la orden (tap_pay_orders) para que el servidor
+  // recalcule el monto en vez de cobrar el que manda el cliente. Opcionales.
+  id_tap_pay_order?: string;
 }
 
 /** Respuesta de POST /payments cuando el cobro se hizo (o se re-jugó). */
@@ -92,6 +95,9 @@ export interface WalletOrderRequest {
   // a cobrar desde los dish_order de la mesa en vez de confiar en
   // baseAmount/amount. Opcionales: el resto de las apps no los envía.
   id_table_order?: string | null;
+  // Tap & Pay: identifican la orden (tap_pay_orders) para que el servidor
+  // recalcule el monto en vez de cobrar el que manda el cliente. Opcionales.
+  id_tap_pay_order?: string;
   payment_type?: string;
   selected_item_ids?: string[];
 }
