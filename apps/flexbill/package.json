@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@even/api-client": "*",
+    "@even/cart": "*",
     "@even/payments": "*",
     "@even/ui": "*",
     "lucide-react": "^1.64.0",
