@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import type { MsiConfig } from "@/types/payment.types";
+import { getBackendOrigin } from "@even/api-client";
 
 export type PaymentProviderCode = "ecartpay" | "clip" | null;
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ||
-  "http://localhost:5000";
+const API_BASE_URL = getBackendOrigin(
+  process.env.NEXT_PUBLIC_API_URL,
+  "http://localhost:5000",
+);
 
 const EMPTY_MSI_CONFIG: MsiConfig = { isActive: false, visaMc: [], amex: [] };
 
@@ -58,7 +60,9 @@ export function useCheckoutContext(
         if (cancelled) return;
         setProvider((data.provider as PaymentProviderCode) ?? null);
         setMsiConfig(data.msi ?? EMPTY_MSI_CONFIG);
-        setAgentStatus(data.agentStatus ? toAgentStatus(data.agentStatus) : null);
+        setAgentStatus(
+          data.agentStatus ? toAgentStatus(data.agentStatus) : null,
+        );
         setIsHighDemand(!!data.orderFlowStatus?.is_high_demand);
       } catch (err) {
         console.error("useCheckoutContext error:", err);

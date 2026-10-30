@@ -13,10 +13,12 @@ import { useRestaurant } from "../context/RestaurantContext";
 import { useAgentStatus } from "../hooks/useAgentStatus";
 import POSBlockedModal from "./POSBlockedModal";
 import ItemCustomizations from "@/components/ItemCustomizations";
+import { getBackendOrigin } from "@even/api-client";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, "") ||
-  "http://localhost:5000";
+const API_BASE_URL = getBackendOrigin(
+  process.env.NEXT_PUBLIC_API_URL,
+  "http://localhost:5000",
+);
 
 // Perfil completo = tiene nombre Y fecha de nacimiento (apellido es opcional).
 const isProfileComplete = (
