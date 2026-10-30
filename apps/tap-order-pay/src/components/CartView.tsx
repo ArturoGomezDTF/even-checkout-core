@@ -15,10 +15,12 @@ import POSBlockedModal from "./POSBlockedModal";
 import { isProfileComplete } from "@/utils/profile";
 import { getItemDisplayPrice } from "@/utils/commissionCalculator";
 import ItemCustomizations from "@/components/ItemCustomizations";
+import { getBackendOrigin } from "@even/api-client";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ||
-  "http://localhost:5000";
+const API_BASE_URL = getBackendOrigin(
+  process.env.NEXT_PUBLIC_API_URL,
+  "http://localhost:5000",
+);
 
 export default function CartView() {
   const t = useTranslations("CartView");

@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { LOCALE_COOKIE, negotiateLocale } from "@/i18n/locale";
+import { getBackendOrigin } from "@even/api-client";
 
 export function middleware(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
 
-  const backendUrl =
-    process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, "") ||
-    "https://even-backend-production.up.railway.app";
+  const backendUrl = getBackendOrigin(
+    process.env.NEXT_PUBLIC_API_URL,
+    "https://even-backend-production.up.railway.app",
+  );
   const isDev = process.env.NODE_ENV === "development";
   const devUrls = isDev ? " http://localhost:5000 ws://localhost:5000" : "";
   const backendHost = backendUrl.replace(/https?:\/\//, "");

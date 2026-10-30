@@ -17,6 +17,7 @@ import POSBlockedModal from "@/app/components/POSBlockedModal";
 import { authService } from "@/app/services/auth.service";
 import { getItemDisplayPrice } from "@/app/utils/commissionCalculator";
 import ItemCustomizations from "@/app/components/ItemCustomizations";
+import { getBackendOrigin } from "@even/api-client";
 
 // Perfil completo = tiene nombre Y fecha de nacimiento. Sin esto,
 // handleConfirmOrder termina generando un nombre placeholder tipo
@@ -97,9 +98,10 @@ export default function CartView() {
     return Math.round(sum * 100) / 100;
   }, [cartState.items, displayUnitPrices]);
 
-  const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, "") ||
-    "http://localhost:5000";
+  const API_BASE_URL = getBackendOrigin(
+    process.env.NEXT_PUBLIC_API_URL,
+    "http://localhost:5000",
+  );
 
   const handleOrder = async () => {
     if (hasOnlyPromoItems) return;
@@ -381,8 +383,9 @@ export default function CartView() {
                                 note={item.specialInstructions}
                                 formatPrice={(price) =>
                                   price *
-                                  ((displayUnitPrices.get(item.cartItemId || "") ??
-                                    item.price + (item.extraPrice || 0)) /
+                                  ((displayUnitPrices.get(
+                                    item.cartItemId || "",
+                                  ) ?? item.price + (item.extraPrice || 0)) /
                                     (item.price + (item.extraPrice || 0) || 1))
                                 }
                               />
