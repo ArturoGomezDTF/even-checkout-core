@@ -9,3 +9,10 @@ export {
   type PromoActivationItem,
   type PromoActivationsService,
 } from "./promoActivations";
+export {
+  createUserDiscountsService,
+  userDiscountDetailSuffix,
+  type UserDiscount,
+  type UserDiscountCustomField,
+  type UserDiscountsService,
+} from "./userDiscounts";
