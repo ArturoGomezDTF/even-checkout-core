@@ -51,7 +51,12 @@ export default function PromoActivationBanner({
           branchNumber,
         );
     if (!response.success) {
-      throw new Error(response.error || response.message || t("errorClaimGeneric"));
+      const err = response.error;
+      throw new Error(
+        (typeof err === "string" ? err : err?.message) ||
+          response.message ||
+          t("errorClaimGeneric"),
+      );
     }
     await refreshCart();
   };
