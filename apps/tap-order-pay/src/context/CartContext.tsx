@@ -14,7 +14,6 @@ import {
   computeTotals,
   initialCartState,
   lineSignature,
-  type CartAction as BaseCartAction,
   type CartState as BaseCartState,
 } from "@even/cart";
 import { MenuItemData } from "../interfaces/menuItemData";
@@ -32,7 +31,6 @@ export interface CartItem extends MenuItemData {
 }
 
 type CartState = BaseCartState<CartItem>;
-type CartAction = BaseCartAction<CartItem>;
 
 const initialState: CartState = initialCartState;
 
