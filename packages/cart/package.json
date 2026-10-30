@@ -1,0 +1,26 @@
+{
+  "name": "@even/cart",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Carrito y promociones compartidas entre las apps de cliente (códigos de promo, activaciones QR).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@even/api-client": "*"
+  },
+  "devDependencies": {
+    "@even/eslint-config": "*",
+    "@even/tsconfig": "*",
+    "eslint": "^9",
+    "jsdom": "^30.1.3",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.4"
+  }
+}
