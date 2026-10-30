@@ -16,3 +16,14 @@ export {
   type UserDiscountCustomField,
   type UserDiscountsService,
 } from "./userDiscounts";
+export {
+  cartReducer,
+  computeTotals,
+  initialCartState,
+  lineSignature,
+  type CartAction,
+  type CartLine,
+  type CartLineField,
+  type CartLineOption,
+  type CartState,
+} from "./cartReducer";

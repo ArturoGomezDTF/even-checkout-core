@@ -9,6 +9,13 @@ import React, {
   useRef,
   ReactNode,
 } from "react";
+import {
+  cartReducer as baseCartReducer,
+  computeTotals,
+  initialCartState,
+  lineSignature,
+  type CartState as BaseCartState,
+} from "@even/cart";
 import { MenuItemData } from "../interfaces/menuItemData";
 import { cartApi, CartItem as ApiCartItem } from "../services/cart.service";
 import { useAuth } from "./AuthContext";
@@ -23,174 +30,11 @@ export interface CartItem extends MenuItemData {
   userDiscountId?: string | null;
 }
 
-interface CartState {
-  items: CartItem[];
-  totalItems: number;
-  totalPrice: number;
-  userName: string;
-  isLoading: boolean;
-  // false hasta que el carrito se resuelve por primera vez contra el backend.
-  // Distingue "todavia no se que hay" de "ya se que esta vacio": sin esto, una
-  // pantalla que rebota por carrito vacio lo hace en el primer render, antes
-  // de que exista una sola respuesta del servidor.
-  hasLoaded: boolean;
-  cartId: string | null;
-}
+type CartState = BaseCartState<CartItem>;
 
-type CartAction =
-  | { type: "ADD_ITEM"; payload: CartItem }
-  | { type: "UPDATE_ITEM"; payload: { cartItemId: string; item: CartItem } }
-  | { type: "REMOVE_ITEM"; payload: string } // cartItemId
-  | {
-      type: "UPDATE_QUANTITY";
-      payload: { cartItemId: string; quantity: number };
-    }
-  | {
-      type: "SET_CART_ITEM_ID";
-      payload: {
-        signature: string;
-        cartItemId: string;
-      };
-    }
-  | { type: "CLEAR_CART" }
-  | { type: "SET_USER_NAME"; payload: string }
-  | { type: "SET_LOADING"; payload: boolean }
-  | {
-      type: "SET_CART";
-      payload: {
-        items: CartItem[];
-        totalItems: number;
-        totalPrice: number;
-        cartId: string | null;
-      };
-    };
+const initialState: CartState = initialCartState;
 
-const initialState: CartState = {
-  items: [],
-  totalItems: 0,
-  totalPrice: 0,
-  userName: "",
-  isLoading: false,
-  hasLoaded: false,
-  cartId: null,
-};
-
-// Firma estable que identifica una "línea" del carrito independientemente de
-// la forma del objeto customFields (el dish page incluye fieldType, el backend
-// no). Solo usa lo que define la identidad: id + extraPrice + optionIds.
-function lineSignature(item: {
-  id: number;
-  extraPrice?: number;
-  customFields?: CartItem["customFields"];
-}) {
-  const fields = (item.customFields || [])
-    .map((f: any) => ({
-      fieldId: f.fieldId,
-      options: ((f.selectedOptions || []) as any[])
-        .map((o) => o.optionId)
-        .sort(),
-    }))
-    .sort((a, b) => String(a.fieldId).localeCompare(String(b.fieldId)));
-  return JSON.stringify({ id: item.id, extra: item.extraPrice || 0, fields });
-}
-
-function computeTotals(items: CartItem[]) {
-  return {
-    totalItems: items.reduce((s, i) => s + i.quantity, 0),
-    totalPrice: items.reduce(
-      (s, i) => s + (i.price + (i.extraPrice || 0)) * i.quantity,
-      0,
-    ),
-  };
-}
-
-function cartReducer(state: CartState, action: CartAction): CartState {
-  switch (action.type) {
-    case "SET_LOADING":
-      return { ...state, isLoading: action.payload };
-
-    case "SET_CART":
-      return {
-        ...state,
-        items: action.payload.items,
-        totalItems: action.payload.totalItems,
-        totalPrice: action.payload.totalPrice,
-        cartId: action.payload.cartId,
-        isLoading: false,
-        hasLoaded: true,
-      };
-
-    case "SET_USER_NAME":
-      return { ...state, userName: action.payload };
-
-    case "CLEAR_CART":
-      return { ...initialState, userName: state.userName, hasLoaded: true };
-
-    case "ADD_ITEM": {
-      const newItem = action.payload;
-      const sig = lineSignature(newItem);
-      const existing = state.items.find((i) => lineSignature(i) === sig);
-      const newItems = existing
-        ? state.items.map((i) =>
-            i === existing
-              ? { ...i, quantity: i.quantity + newItem.quantity }
-              : i,
-          )
-        : [...state.items, { ...newItem, cartItemId: undefined }];
-      return { ...state, ...computeTotals(newItems), items: newItems };
-    }
-
-    case "UPDATE_ITEM": {
-      // Reemplazo en su lugar; si el backend fusionó líneas, refreshCart lo reconcilia
-      const { cartItemId, item } = action.payload;
-      const newItems = state.items.map((i) =>
-        i.cartItemId === cartItemId ? { ...i, ...item, cartItemId } : i,
-      );
-      return { ...state, ...computeTotals(newItems), items: newItems };
-    }
-
-    case "REMOVE_ITEM": {
-      // Un cartItemId vacío haría match con todos los items pendientes (los
-      // que aún no reciben id del backend) — no hacer nada en ese caso.
-      if (!action.payload) return state;
-      const newItems = state.items.filter(
-        (i) => i.cartItemId !== action.payload,
-      );
-      return { ...state, ...computeTotals(newItems), items: newItems };
-    }
-
-    case "UPDATE_QUANTITY": {
-      const { cartItemId, quantity } = action.payload;
-      // Idem: un cartItemId vacío afectaría a varios items pendientes.
-      if (!cartItemId) return state;
-      const newItems =
-        quantity <= 0
-          ? state.items.filter((i) => i.cartItemId !== cartItemId)
-          : state.items.map((i) =>
-              i.cartItemId === cartItemId ? { ...i, quantity } : i,
-            );
-      return { ...state, ...computeTotals(newItems), items: newItems };
-    }
-
-    case "SET_CART_ITEM_ID": {
-      const { signature, cartItemId } = action.payload;
-      // Sellar solo el primer pendiente que coincida — evita asignar el mismo
-      // cartItemId a varias filas (lo que haría que + las mueva juntas).
-      let stamped = false;
-      const newItems = state.items.map((i) => {
-        if (!stamped && !i.cartItemId && lineSignature(i) === signature) {
-          stamped = true;
-          return { ...i, cartItemId };
-        }
-        return i;
-      });
-      return { ...state, items: newItems };
-    }
-
-    default:
-      return state;
-  }
-}
+const cartReducer = baseCartReducer<CartItem>;
 
 function convertApiItemToCartItem(apiItem: ApiCartItem): CartItem {
   return {
@@ -362,7 +206,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
   ) => {
     const previousItems = state.items;
     const previousCartId = state.cartId;
-    const signature = lineSignature(item);
+    // Normalizar las instrucciones igual que como se guardan en el estado y se
+    // mandan al backend, para que la firma prediga correctamente el dedup del
+    // servidor (y SET_CART_ITEM_ID selle la línea correcta).
+    const normalizedInstructions = specialInstructions || null;
+    const signature = lineSignature({
+      ...item,
+      specialInstructions: normalizedInstructions,
+    });
 
     dispatch({
       type: "ADD_ITEM",
@@ -370,7 +221,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         ...item,
         quantity,
         cartItemId: undefined,
-        specialInstructions: specialInstructions || undefined,
+        specialInstructions: normalizedInstructions,
       } as CartItem,
     });
 
