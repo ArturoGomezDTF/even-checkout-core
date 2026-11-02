@@ -64,6 +64,8 @@ export default function AuthSelectionPage() {
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
+  // Envío del SMS en curso: el paso de código se muestra de inmediato
+  const [sendingCode, setSendingCode] = useState(false);
   const [error, setError] = useState("");
   const [countdown, setCountdown] = useState(0);
   const [newFirstName, setNewFirstName] = useState("");
@@ -191,21 +193,23 @@ export default function AuthSelectionPage() {
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
+    setSendingCode(true);
     try {
       const fullPhone = selectedCountry.code + phoneNumber;
       setPhone(fullPhone);
+      setStep("verify");
       const response = await authService.sendPhoneOTP(fullPhone);
       if (response.success) {
-        setStep("verify");
         setCountdown(60);
       } else {
+        setStep("phone");
         setError(response.error || t("errorSendCode"));
       }
     } catch {
+      setStep("phone");
       setError(t("errorSendCodeGeneric"));
     } finally {
-      setLoading(false);
+      setSendingCode(false);
     }
   };
 
@@ -487,16 +491,20 @@ export default function AuthSelectionPage() {
               />
               <button
                 type="submit"
-                disabled={loading || otp.length !== 6}
+                disabled={loading || sendingCode || otp.length !== 6}
                 className="w-full bg-even-grass text-even-evergreen hover:opacity-90 py-3.5 rounded-full font-medium transition-opacity disabled:bg-even-grass/30 disabled:text-even-evergreen/40 disabled:cursor-not-allowed active:scale-95"
               >
-                {loading ? t("verifying") : t("verifyCode")}
+                {sendingCode
+                  ? t("sending")
+                  : loading
+                    ? t("verifying")
+                    : t("verifyCode")}
               </button>
               <div className="text-center">
                 <button
                   type="button"
                   onClick={handleResendOTP}
-                  disabled={countdown > 0 || loading}
+                  disabled={countdown > 0 || loading || sendingCode}
                   className={`text-sm underline transition-colors ${
                     countdown > 0
                       ? "text-white/40 cursor-not-allowed"

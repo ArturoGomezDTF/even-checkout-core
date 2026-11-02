@@ -75,6 +75,8 @@ export default function AuthView({ onClose }: AuthViewProps) {
   const [lastName, setLastName] = useState("");
   const [age, setAge] = useState<number | "">("");
   const [loading, setLoading] = useState(false);
+  // Envío del SMS en curso: el paso de código se muestra de inmediato
+  const [sendingCode, setSendingCode] = useState(false);
   const [error, setError] = useState("");
   const [countdown, setCountdown] = useState(0);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -106,21 +108,23 @@ export default function AuthView({ onClose }: AuthViewProps) {
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
+    setSendingCode(true);
     try {
       const fullPhone = countryCode + phoneNumber;
       setPhone(fullPhone);
+      setStep("verify");
       const response = await sendOTP(fullPhone);
       if (response.success) {
-        setStep("verify");
         setCountdown(60);
       } else {
+        setStep("phone");
         setError(response.error || t("errorSendCode"));
       }
     } catch {
+      setStep("phone");
       setError(t("errorSendCodeGeneric"));
     } finally {
-      setLoading(false);
+      setSendingCode(false);
     }
   };
 
@@ -370,16 +374,20 @@ export default function AuthView({ onClose }: AuthViewProps) {
               />
               <button
                 type="submit"
-                disabled={loading || otp.length !== 6}
+                disabled={loading || sendingCode || otp.length !== 6}
                 className="w-full bg-even-grass text-even-evergreen hover:opacity-90 py-3 rounded-full font-medium transition-opacity disabled:bg-even-grass/30 disabled:text-even-evergreen/40 disabled:cursor-not-allowed"
               >
-                {loading ? t("verifying") : t("verifyCode")}
+                {sendingCode
+                  ? t("sending")
+                  : loading
+                    ? t("verifying")
+                    : t("verifyCode")}
               </button>
               <div className="text-center">
                 <button
                   type="button"
                   onClick={handleResendOTP}
-                  disabled={countdown > 0 || loading}
+                  disabled={countdown > 0 || loading || sendingCode}
                   className={`text-sm underline transition-colors ${
                     countdown > 0
                       ? "text-gray-400 cursor-not-allowed"
