@@ -18,6 +18,7 @@ import MenuHeaderBack from "@/app/components/headers/MenuHeaderBack";
 import CardScanner from "@/app/components/CardScanner";
 import Loader from "@/app/components/UI/Loader";
 import { useAuth } from "@/app/context/AuthContext";
+import { getCardExpiryYears } from "@even/payments";
 
 const MONTHS = [
   "01",
@@ -33,11 +34,7 @@ const MONTHS = [
   "11",
   "12",
 ];
-const START_YEAR = new Date().getFullYear();
-const YEARS = Array.from(
-  { length: process.env.NODE_ENV === "development" ? 40 : 10 },
-  (_, i) => String(START_YEAR + i).slice(-2),
-);
+const YEARS = getCardExpiryYears();
 
 function AddCardContent() {
   const t = useTranslations("AddCardPage");
