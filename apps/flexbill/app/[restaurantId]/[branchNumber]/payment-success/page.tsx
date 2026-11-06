@@ -43,6 +43,7 @@ export default function PaymentSuccessPage() {
     skipSessionCheck: true,
   });
   const { restaurant } = useRestaurant();
+  const showImages = !!restaurant && restaurant.menu_show_images !== false;
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
   const { state, loadTableData } = useTable();
@@ -693,21 +694,23 @@ export default function PaymentSuccessPage() {
                           className="flex justify-between items-center gap-3 md:gap-4 lg:gap-5"
                         >
                           {/* Image */}
-                          <div className="size-14 md:size-16 lg:size-20 bg-gray-300 rounded-lg md:rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden">
-                            {dish.images?.[0] ? (
-                              <img
-                                src={dish.images[0]}
-                                alt={dish.item}
-                                className="w-full h-full object-cover rounded-lg md:rounded-xl"
-                              />
-                            ) : (
-                              <img
-                                src="/even/even-asterisk-evergreen.svg"
-                                alt="Logo Even"
-                                className="size-7 md:size-9 lg:size-11 object-contain"
-                              />
-                            )}
-                          </div>
+                          {showImages && (
+                            <div className="size-14 md:size-16 lg:size-20 bg-gray-300 rounded-lg md:rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden">
+                              {dish.images?.[0] ? (
+                                <img
+                                  src={dish.images[0]}
+                                  alt={dish.item}
+                                  className="w-full h-full object-cover rounded-lg md:rounded-xl"
+                                />
+                              ) : (
+                                <img
+                                  src="/even/even-asterisk-evergreen.svg"
+                                  alt="Logo Even"
+                                  className="size-7 md:size-9 lg:size-11 object-contain"
+                                />
+                              )}
+                            </div>
+                          )}
                           <div className="flex-1">
                             <p className="text-white font-medium text-base md:text-lg lg:text-xl">
                               {dish.quantity}x {dish.item}

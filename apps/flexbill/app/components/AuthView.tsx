@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { ArrowLeft, Phone, User, ChevronDown } from "lucide-react";
 import Flag from "react-world-flags";
 import { useAuth } from "@/app/context/AuthContext";
+import TermsCheckbox from "@/app/components/TermsCheckbox";
 import { useModalBackClose } from "@/app/hooks/useModalBackClose";
 import LanguageToggleButton from "@/app/components/UI/LanguageToggleButton";
 
@@ -74,6 +75,7 @@ export default function AuthView({ onClose }: AuthViewProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [age, setAge] = useState<number | "">("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   // Envío del SMS en curso: el paso de código se muestra de inmediato
   const [sendingCode, setSendingCode] = useState(false);
@@ -171,7 +173,7 @@ export default function AuthView({ onClose }: AuthViewProps) {
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (age === "") return;
+    if (age === "" || !acceptedTerms) return;
     setError("");
     setLoading(true);
     try {
@@ -180,6 +182,7 @@ export default function AuthView({ onClose }: AuthViewProps) {
         firstName,
         lastName,
         birthDate: `${birthYear}-01-01`,
+        acceptedTerms: true,
       });
       if (response.success) {
         await refreshProfile();
@@ -287,7 +290,7 @@ export default function AuthView({ onClose }: AuthViewProps) {
                     <button
                       type="button"
                       onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                      className="h-[48px] w-[90px] px-3 text-gray-700 font-medium bg-white/70 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-even-evergreen cursor-pointer flex items-center justify-between gap-1.5"
+                      className="h-12 w-22.5 px-3 text-gray-700 font-medium bg-white/70 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-even-evergreen cursor-pointer flex items-center justify-between gap-1.5"
                       disabled={loading}
                     >
                       <div className="flex items-center gap-1.5">
@@ -338,7 +341,7 @@ export default function AuthView({ onClose }: AuthViewProps) {
                         setPhoneNumber(value);
                         setPhoneNumberDisplay(formatPhoneInput(value));
                       }}
-                      className="h-[48px] w-full pl-10 pr-3 text-gray-700 bg-white/70 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-even-evergreen"
+                      className="h-12 w-full pl-10 pr-3 text-gray-700 bg-white/70 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-even-evergreen"
                       placeholder={t("phonePlaceholder")}
                       disabled={loading}
                       maxLength={14}
@@ -422,7 +425,7 @@ export default function AuthView({ onClose }: AuthViewProps) {
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     placeholder={t("firstNamePlaceholder")}
-                    className="h-[48px] w-full pl-10 pr-3 text-gray-700 bg-white/70 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-even-evergreen"
+                    className="h-12 w-full pl-10 pr-3 text-gray-700 bg-white/70 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-even-evergreen"
                     required
                     disabled={loading}
                   />
@@ -432,7 +435,7 @@ export default function AuthView({ onClose }: AuthViewProps) {
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder={t("lastNamePlaceholder")}
-                  className="h-[48px] w-full px-3 text-gray-700 bg-white/70 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-even-evergreen"
+                  className="h-12 w-full px-3 text-gray-700 bg-white/70 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-even-evergreen"
                   disabled={loading}
                 />
               </div>
@@ -446,7 +449,7 @@ export default function AuthView({ onClose }: AuthViewProps) {
                   onChange={(e) =>
                     setAge(e.target.value === "" ? "" : Number(e.target.value))
                   }
-                  className="h-[48px] w-full px-3 text-gray-700 bg-white/70 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-even-evergreen cursor-pointer"
+                  className="h-12 w-full px-3 text-gray-700 bg-white/70 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-even-evergreen cursor-pointer"
                   disabled={loading}
                 >
                   <option value="" disabled>
@@ -459,9 +462,16 @@ export default function AuthView({ onClose }: AuthViewProps) {
                   ))}
                 </select>
               </div>
+              <TermsCheckbox
+                checked={acceptedTerms}
+                onChange={setAcceptedTerms}
+                disabled={loading}
+                variant="light"
+              />
+
               <button
                 type="submit"
-                disabled={loading || !firstName || age === ""}
+                disabled={loading || !firstName || age === "" || !acceptedTerms}
                 className="w-full bg-even-grass text-even-evergreen hover:opacity-90 py-3 rounded-full font-medium transition-opacity disabled:bg-even-grass/30 disabled:text-even-evergreen/40 disabled:cursor-not-allowed mt-6"
               >
                 {loading ? t("saving") : t("continueCta")}

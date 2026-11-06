@@ -107,6 +107,8 @@
     "productsSelected": "{count, plural, one {# product selected} other {# products selected}}",
     "customizeExtras": "Customize additional products",
     "selectUpTo": "Select up to {max}",
+    "selectExactly": "Select {count}",
+    "selectBetween": "Select {min} to {max}",
     "optionUnavailable": "Sold out",
     "notesPlaceholder": "Allergies, special instructions, comments...",
     "addToCartCta": "Add • ${amount} MXN",
@@ -126,10 +128,10 @@
   "Auth": {
     "phoneStepTitle": "Enter your number",
     "verifyStepTitle": "Verify your code",
-    "profileStepTitle": "Complete your profile",
+    "profileStepTitle": "Register your profile",
     "phoneStepSubtitle": "We'll send you a verification code",
     "verifyStepSubtitlePrefix": "We sent a code to",
-    "profileStepSubtitle": "Tell us a bit more about yourself",
+    "profileStepSubtitle": "You'll only need to do this once",
     "phonePlaceholder": "Phone number",
     "firstNamePlaceholder": "First name",
     "lastNamePlaceholder": "Last name",
@@ -309,13 +311,6 @@
     "workingAriaLabel": "Pepper working",
     "approvedAriaLabel": "Pepper approved"
   },
-  "EqualSplitSelectionModal": {
-    "title": "Who's splitting the bill?",
-    "subtitle": "Uncheck anyone who isn't splitting",
-    "defaultGuestName": "Guest",
-    "confirmingCta": "Confirming...",
-    "splitBetweenCta": "{count, plural, one {Split between # person} other {Split between # people}}"
-  },
   "OrderStatus": {
     "subtitle": "Review your bill and choose how to pay",
     "tableClosedTitle": "Table Closed!",
@@ -370,7 +365,7 @@
     "totalLabel": "Total:",
     "yourShareLabel": "Your share:",
     "yourAmountLabel": "Your amount:",
-    "splitBetweenLabel": "{count, plural, one {Split between # person} other {Split between # people}}: {names}",
+    "howManyPeopleLabel": "How many people are splitting what's left?",
     "tipLabel": "Tip",
     "underMinimumWarning": "You haven't reached the minimum purchase!",
     "totalToPay": "Total to pay",
@@ -381,12 +376,13 @@
     "consumptionLabel": "Order",
     "itemsLabel": "Your items",
     "tipLabelPrefix": "+ Tip",
-    "namesJoiner": " and "
-  },
-  "GuestNamePage": {
-    "title": "What's your name?",
-    "nameLabel": "Your name",
-    "namePlaceholder": "Name",
+    "splitTitle": "Split what's left",
+    "yourShareTitle": "Your share",
+    "ofAmount": "of ${amount}",
+    "peopleUnit": "people",
+    "fewerPeople": "One fewer person",
+    "morePeople": "One more person",
+    "includesTip": "includes ${amount} tip",
     "continueCta": "Continue"
   },
   "OrderAnimation": {
@@ -453,7 +449,12 @@
   },
   "RestaurantClosedModal": {
     "title": "The restaurant is closed",
-    "message": "Sorry, {name} is closed right now."
+    "message": "Sorry, {name} is closed right now.",
+    "notYetTitle": "We are not open yet",
+    "notYetMessage": "You can order starting {when}.",
+    "whenToday": "today at {time}",
+    "whenTomorrow": "tomorrow at {time}",
+    "whenDay": "{day} at {time}"
   },
   "PromoActivationBanner": {
     "errorClaimGeneric": "Error claiming"
@@ -547,5 +548,12 @@
     "heroTitle": "Welcome",
     "heroSubtitle": "Order directly from your table and <highlight>enjoy without waiting</highlight>.",
     "heroFootnote": "Scan the QR code or tap the card at your table to access the digital menu."
+  },
+  "Terms": {
+    "checkbox": "I have read and accept the <terms>Terms and Conditions</terms> and the <privacy>Privacy Notice</privacy>.",
+    "updateTitle": "We updated our terms",
+    "updateBody": "We updated our Terms and Conditions and Privacy Notice.",
+    "updateCta": "Got it",
+    "errorSave": "We couldn't save your acceptance. Please try again."
   }
 }

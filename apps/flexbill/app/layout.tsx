@@ -9,6 +9,7 @@ import { GuestProvider } from "./context/GuestContext";
 import { PaymentProvider } from "./context/PaymentContext";
 import { RestaurantProvider } from "./context/RestaurantContext";
 import { AuthProvider } from "./context/AuthContext";
+import TermsUpdateToast from "@/app/components/TermsUpdateToast";
 import { SocketProvider } from "./context/SocketContext";
 import { PepperProvider } from "./context/PepperContext";
 import Script from "next/script";
@@ -81,6 +82,7 @@ export default async function RootLayout({
         />
         <NextIntlClientProvider locale={locale} messages={messages}>
           <AuthProvider>
+            <TermsUpdateToast />
             <RestaurantProvider>
               <PepperProvider>
                 <GuestProvider>

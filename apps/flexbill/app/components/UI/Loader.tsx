@@ -1,6 +1,6 @@
 const Loader = () => {
   return (
-    <div className="fixed inset-0 z-50 bg-even-evergreen flex items-center justify-center">
+    <div data-even-loader className="fixed inset-0 z-50 bg-even-evergreen flex items-center justify-center">
       <div className="text-center">
         <div>
           <img

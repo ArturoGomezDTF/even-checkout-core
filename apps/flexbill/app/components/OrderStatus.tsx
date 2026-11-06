@@ -9,8 +9,12 @@ import { useTableNavigation } from "../hooks/useTableNavigation";
 import { getRestaurantData } from "../utils/restaurantData";
 import MenuHeaderBackOrder from "./headers/MenuHeaderBackOrder";
 import ItemCustomizations from "@/app/components/ItemCustomizations";
+import { useRestaurant } from "@/app/context/RestaurantContext";
 
 export default function OrderStatus() {
+  const { restaurant: menuRestaurant } = useRestaurant();
+  const showImages =
+    !!menuRestaurant && menuRestaurant.menu_show_images !== false;
   const t = useTranslations("OrderStatus");
   const tc = useTranslations("Common");
   const { state, loadTableData, syncOrderFromPOS, joinTableWithoutOrdering } =
@@ -95,10 +99,7 @@ export default function OrderStatus() {
           tableTotalPrice,
         )
       : 0;
-  const tableRemainingAmount = Math.max(
-    tableTotalPrice - tablePaidAmount,
-    0,
-  );
+  const tableRemainingAmount = Math.max(tableTotalPrice - tablePaidAmount, 0);
 
   // Calcular totales de platillos pagados
   const paidTotalItems = paidDishes.length;
@@ -180,7 +181,7 @@ export default function OrderStatus() {
             ) : (
               <>
                 {/* Scrollable content */}
-                <div className="flex-1 overflow-y-auto px-6 md:px-8 lg:px-10 pb-[140px] md:pb-[160px] lg:pb-[180px]">
+                <div className="flex-1 overflow-y-auto px-6 md:px-8 lg:px-10 pb-35 md:pb-40 lg:pb-45">
                   {/* Ordered Items */}
                   <div className="w-full mx-auto pb-6 md:pb-8">
                     <div className="flex justify-center items-start relative mt-6 md:mt-8">
@@ -251,23 +252,25 @@ export default function OrderStatus() {
                               >
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-3 md:gap-4 lg:gap-5">
-                                    <div className="flex-shrink-0 mt-1">
-                                      <div className="size-16 md:size-20 lg:size-24 bg-gray-300 rounded-sm md:rounded-md flex items-center justify-center hover:scale-105 transition-transform duration-200">
-                                        {dish.images?.[0] ? (
-                                          <img
-                                            src={dish.images[0]}
-                                            alt="Dish Image"
-                                            className="w-full h-full object-cover rounded-sm md:rounded-md"
-                                          />
-                                        ) : (
-                                          <img
-                                            src="/even/even-asterisk-evergreen.svg"
-                                            alt="Logo Even"
-                                            className="size-10 md:size-12 lg:size-14 object-contain"
-                                          />
-                                        )}
+                                    {showImages && (
+                                      <div className="shrink-0 mt-1">
+                                        <div className="size-16 md:size-20 lg:size-24 bg-gray-300 rounded-sm md:rounded-md flex items-center justify-center hover:scale-105 transition-transform duration-200">
+                                          {dish.images?.[0] ? (
+                                            <img
+                                              src={dish.images[0]}
+                                              alt="Dish Image"
+                                              className="w-full h-full object-cover rounded-sm md:rounded-md"
+                                            />
+                                          ) : (
+                                            <img
+                                              src="/even/even-asterisk-evergreen.svg"
+                                              alt="Logo Even"
+                                              className="size-10 md:size-12 lg:size-14 object-contain"
+                                            />
+                                          )}
+                                        </div>
                                       </div>
-                                    </div>
+                                    )}
                                     <div className="flex-1 min-w-0">
                                       <h3 className="text-xs md:text-sm lg:text-base text-black/60 font-medium">
                                         {dish.guest_name.toUpperCase()}
@@ -277,10 +280,12 @@ export default function OrderStatus() {
                                       </h4>
                                       {dish.is_promo_item && (
                                         <span className="inline-block mt-1 text-[10px] md:text-xs bg-even-grass/20 text-even-evergreen px-2 py-0.5 rounded-full uppercase tracking-wide">
-                                          {dish.promo_discount_percentage != null &&
+                                          {dish.promo_discount_percentage !=
+                                            null &&
                                           dish.promo_discount_percentage >= 100
                                             ? t("freeLabel")
-                                            : dish.promo_discount_percentage != null
+                                            : dish.promo_discount_percentage !=
+                                                null
                                               ? t("percentOff", {
                                                   percent:
                                                     dish.promo_discount_percentage,
@@ -292,7 +297,8 @@ export default function OrderStatus() {
                                         customFields={dish.custom_fields}
                                         formatPrice={(price) =>
                                           price *
-                                          ((dish.total_display_price ?? dish.total_price) /
+                                          ((dish.total_display_price ??
+                                            dish.total_price) /
                                             (dish.total_price || 1))
                                         }
                                       />
@@ -300,7 +306,8 @@ export default function OrderStatus() {
                                         <span
                                           className={`inline-block px-2 md:px-3 lg:px-4 py-0.5 md:py-1 lg:py-1.5 text-xs md:text-sm lg:text-base font-medium rounded-full border ${statusColorMap[dish.status] || "bg-yellow-100 text-yellow-800 border-yellow-300"}`}
                                         >
-                                          {statusMap[dish.status] || dish.status}
+                                          {statusMap[dish.status] ||
+                                            dish.status}
                                         </span>
                                       </div>
                                     </div>
@@ -311,8 +318,10 @@ export default function OrderStatus() {
                                     </p>
                                     <div className="w-14 md:w-16 lg:w-20">
                                       {dish.is_promo_item &&
-                                        dish.promo_discount_percentage != null &&
-                                        dish.promo_discount_percentage < 100 && (
+                                        dish.promo_discount_percentage !=
+                                          null &&
+                                        dish.promo_discount_percentage <
+                                          100 && (
                                           <p className="text-xs md:text-sm text-gray-400 line-through">
                                             $
                                             {(
@@ -383,23 +392,25 @@ export default function OrderStatus() {
                               >
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-3 md:gap-4 lg:gap-5">
-                                    <div className="flex-shrink-0 mt-1">
-                                      <div className="size-16 md:size-20 lg:size-24 bg-gray-300 rounded-sm md:rounded-md flex items-center justify-center hover:scale-105 transition-transform duration-200">
-                                        {dish.images?.[0] ? (
-                                          <img
-                                            src={dish.images[0]}
-                                            alt="Dish Image"
-                                            className="w-full h-full object-cover rounded-sm md:rounded-md"
-                                          />
-                                        ) : (
-                                          <img
-                                            src="/even/even-asterisk-evergreen.svg"
-                                            alt="Logo Even"
-                                            className="size-10 md:size-12 lg:size-14 object-contain"
-                                          />
-                                        )}
+                                    {showImages && (
+                                      <div className="shrink-0 mt-1">
+                                        <div className="size-16 md:size-20 lg:size-24 bg-gray-300 rounded-sm md:rounded-md flex items-center justify-center hover:scale-105 transition-transform duration-200">
+                                          {dish.images?.[0] ? (
+                                            <img
+                                              src={dish.images[0]}
+                                              alt="Dish Image"
+                                              className="w-full h-full object-cover rounded-sm md:rounded-md"
+                                            />
+                                          ) : (
+                                            <img
+                                              src="/even/even-asterisk-evergreen.svg"
+                                              alt="Logo Even"
+                                              className="size-10 md:size-12 lg:size-14 object-contain"
+                                            />
+                                          )}
+                                        </div>
                                       </div>
-                                    </div>
+                                    )}
                                     <div className="flex-1 min-w-0">
                                       <h3 className="text-sm md:text-base lg:text-lg text-stroke">
                                         {dish.guest_name.toUpperCase()}
@@ -409,10 +420,12 @@ export default function OrderStatus() {
                                       </h4>
                                       {dish.is_promo_item && (
                                         <span className="inline-block mt-1 text-[10px] md:text-xs bg-even-grass/20 text-even-evergreen px-2 py-0.5 rounded-full uppercase tracking-wide">
-                                          {dish.promo_discount_percentage != null &&
+                                          {dish.promo_discount_percentage !=
+                                            null &&
                                           dish.promo_discount_percentage >= 100
                                             ? t("freeLabel")
-                                            : dish.promo_discount_percentage != null
+                                            : dish.promo_discount_percentage !=
+                                                null
                                               ? t("percentOff", {
                                                   percent:
                                                     dish.promo_discount_percentage,
@@ -424,7 +437,8 @@ export default function OrderStatus() {
                                         customFields={dish.custom_fields}
                                         formatPrice={(price) =>
                                           price *
-                                          ((dish.total_display_price ?? dish.total_price) /
+                                          ((dish.total_display_price ??
+                                            dish.total_price) /
                                             (dish.total_price || 1))
                                         }
                                       />
@@ -441,8 +455,10 @@ export default function OrderStatus() {
                                     </p>
                                     <div>
                                       {dish.is_promo_item &&
-                                        dish.promo_discount_percentage != null &&
-                                        dish.promo_discount_percentage < 100 && (
+                                        dish.promo_discount_percentage !=
+                                          null &&
+                                        dish.promo_discount_percentage <
+                                          100 && (
                                           <p className="text-xs md:text-sm text-gray-400 line-through">
                                             $
                                             {(
@@ -479,7 +495,9 @@ export default function OrderStatus() {
                                 </span>
                               </div>
                               <p className="text-sm md:text-base lg:text-lg mt-1 text-black">
-                                {t("paidDishesCount", { count: paidTotalItems })}
+                                {t("paidDishesCount", {
+                                  count: paidTotalItems,
+                                })}
                               </p>
                             </div>
                           </div>

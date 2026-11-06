@@ -14,11 +14,6 @@ import ValidationError from "@/app/components/ValidationError";
 import { useAgentStatus } from "@/app/hooks/useAgentStatus";
 import { useRestaurant } from "@/app/context/RestaurantContext";
 import POSBlockedModal from "@/app/components/POSBlockedModal";
-import EqualSplitSelectionModal from "@/app/components/EqualSplitSelectionModal";
-import { tableService } from "@/app/services/table.service";
-import { useAuth } from "@/app/context/AuthContext";
-import { useGuest } from "@/app/context/GuestContext";
-import { apiService } from "@/app/utils/api";
 
 export default function PaymentOptionsPage() {
   const t = useTranslations("PaymentOptionsPage");
@@ -33,9 +28,6 @@ export default function PaymentOptionsPage() {
   const [posModalReason, setPosModalReason] = useState<
     "turno_closed" | "agent_disconnected"
   >("turno_closed");
-  const [showEqualSplitModal, setShowEqualSplitModal] = useState(false);
-  const [isCheckingSplitSelection, setIsCheckingSplitSelection] =
-    useState(false);
 
   const checkPOSBlock = () => {
     if (isPOSBlocked) {
@@ -47,54 +39,8 @@ export default function PaymentOptionsPage() {
   };
   const searchParams = useSearchParams();
 
-  const {
-    state,
-    dispatch,
-    loadTableData,
-    loadActiveUsers,
-    loadEqualSplitSelection,
-  } = useTable();
+  const { state, dispatch, loadTableData, loadActiveUsers } = useTable();
   const { navigateWithTable } = useTableNavigation();
-  const { user: authUser, profile } = useAuth();
-  const { guestId } = useGuest();
-
-  // Nombres reales de otros usuarios logueados en la mesa (no el actual) —
-  // active_table_users.guest_name viene null para quien se unió sin ordenar,
-  // así que sin esto caen al fallback "Comensal" en el modal de dividir
-  // cuenta. Mismo patrón que ParticipantsHeader.tsx.
-  const [usersInfo, setUsersInfo] = useState<
-    Record<
-      string,
-      {
-        imageUrl: string | null;
-        firstName: string | null;
-        lastName: string | null;
-        fullName: string | null;
-      }
-    >
-  >({});
-
-  useEffect(() => {
-    const userIds = Array.from(
-      new Set(
-        (state.activeUsers ?? [])
-          .map((u) => u.user_id)
-          .filter((id): id is string => Boolean(id)),
-      ),
-    );
-    if (userIds.length === 0) return;
-    apiService
-      .getUsersInfo(userIds)
-      .then((response) => {
-        if (response.success && response.data) {
-          const usersData = (response.data as any).data || response.data;
-          setUsersInfo(usersData);
-        }
-      })
-      .catch((error) => {
-        console.error("Error loading users info:", error);
-      });
-  }, [state.activeUsers]);
 
   // Establecer tableNumber desde URL si no está en el estado
   useEffect(() => {
@@ -263,46 +209,6 @@ export default function PaymentOptionsPage() {
     return usersFromDishes;
   })();
 
-  // Personas activas sin pagar aún — son las candidatas por defecto para
-  // "Dividir cuenta" (a diferencia de uniqueUsers, acá necesitamos el
-  // ActiveUser completo con su id, no solo el nombre, para el modal de
-  // selección).
-  const unpaidActiveUsers = state.activeUsers
-    .filter((user) => {
-      const totalPaid =
-        (user.total_paid_individual || 0) + (user.total_paid_amount || 0);
-      return totalPaid === 0;
-    })
-    .map((activeUser) => {
-      // active_table_users.guest_name puede venir vacío para el usuario
-      // logueado actual (el nombre real vive en profile, no en la fila de
-      // la mesa) — sin esto, el modal de "Dividir cuenta" cae al fallback
-      // "Comensal" en vez de mostrar su nombre.
-      if (activeUser.guest_name) return activeUser;
-      const isCurrentAuthUser = authUser && activeUser.user_id === authUser.id;
-      const isCurrentGuest = guestId && activeUser.guest_id === guestId;
-      if (isCurrentAuthUser && profile) {
-        const resolvedName =
-          profile.firstName && profile.lastName
-            ? `${profile.firstName} ${profile.lastName}`
-            : profile.firstName || state.currentUserName;
-        return resolvedName
-          ? { ...activeUser, guest_name: resolvedName }
-          : activeUser;
-      }
-      if (isCurrentGuest && state.currentUserName) {
-        return { ...activeUser, guest_name: state.currentUserName };
-      }
-      // Otro usuario logueado (no el actual) con guest_name vacío — resolver
-      // vía getUsersInfo, igual que ParticipantsHeader.tsx.
-      if (activeUser.user_id && usersInfo[activeUser.user_id]) {
-        const userData = usersInfo[activeUser.user_id];
-        const resolvedName = userData.fullName || userData.firstName;
-        if (resolvedName) return { ...activeUser, guest_name: resolvedName };
-      }
-      return activeUser;
-    });
-
   // Platillos del usuario actual
   const currentUserDishes = dishOrders.filter(
     (dish) => dish.guest_name === state.currentUserName,
@@ -349,61 +255,20 @@ export default function PaymentOptionsPage() {
     navigateWithTable(`/tip-selection?${queryParams.toString()}`);
   };
 
-  const goToEqualSharesTipSelection = () => {
-    // El monto real se calcula en vivo en tip-selection según la selección
-    // de personas ya fijada (o los active_users sin pagar, como red de
-    // seguridad si por algo no hay selección todavía).
-    const queryParams = new URLSearchParams({
-      type: "equal-shares",
-      userName: state.currentUserName || "",
-    });
-
-    navigateWithTable(`/tip-selection?${queryParams.toString()}`);
-  };
-
-  const handleEqualShares = async () => {
+  const handleEqualShares = () => {
     if (checkPOSBlock()) return;
     if (unpaidAmount <= 0) {
       alert(t("noPendingBill"));
       return;
     }
 
-    setIsCheckingSplitSelection(true);
-    try {
-      const existingSelection = await loadEqualSplitSelection();
-      if (existingSelection) {
-        // Ya alguien fijó la división para esta mesa — usarla directo.
-        goToEqualSharesTipSelection();
-        return;
-      }
+    // Entre cuántas personas se elige en tip-selection.
+    const queryParams = new URLSearchParams({
+      type: "equal-shares",
+      userName: state.currentUserName || "",
+    });
 
-      if (unpaidActiveUsers.length === 0) {
-        // No hay a quién mostrar en el modal (mesa recién abierta, nadie
-        // registrado como activo todavía) — seguir con el flujo normal.
-        goToEqualSharesTipSelection();
-        return;
-      }
-
-      setShowEqualSplitModal(true);
-    } finally {
-      setIsCheckingSplitSelection(false);
-    }
-  };
-
-  const handleConfirmEqualSplitSelection = async (
-    includedActiveUserIds: string[],
-  ) => {
-    if (!restaurantId || !branchNumber || !state.tableNumber) return;
-
-    await tableService.setEqualSplitSelection(
-      restaurantId,
-      branchNumber,
-      state.tableNumber,
-      includedActiveUserIds,
-    );
-
-    setShowEqualSplitModal(false);
-    goToEqualSharesTipSelection();
+    navigateWithTable(`/tip-selection?${queryParams.toString()}`);
   };
 
   const handleChooseAmount = () => {
@@ -574,8 +439,7 @@ export default function PaymentOptionsPage() {
                 {unpaidAmount > 0 && (
                   <button
                     onClick={handleEqualShares}
-                    disabled={isCheckingSplitSelection}
-                    className="w-full bg-white cursor-pointer border-b border-stroke active:bg-even-grass/10 transition-all duration-300 disabled:opacity-60 disabled:pointer-events-none"
+                    className="w-full bg-white cursor-pointer border-b border-stroke active:bg-even-grass/10 transition-all duration-300"
                   >
                     <div className="flex items-center gap-3 md:gap-4 lg:gap-5 py-3 md:py-4 lg:py-5 px-4 md:px-5 lg:px-6">
                       <div className="size-16 md:size-20 lg:size-24 rounded-sm md:rounded-md border border-black flex items-center justify-center">
@@ -680,12 +544,6 @@ export default function PaymentOptionsPage() {
         reason={posModalReason}
         restaurantName={restaurant?.name}
         restaurantLogo={restaurant?.logo_url}
-      />
-      <EqualSplitSelectionModal
-        isOpen={showEqualSplitModal}
-        onClose={() => setShowEqualSplitModal(false)}
-        activeUsers={unpaidActiveUsers}
-        onConfirm={handleConfirmEqualSplitSelection}
       />
     </div>
   );

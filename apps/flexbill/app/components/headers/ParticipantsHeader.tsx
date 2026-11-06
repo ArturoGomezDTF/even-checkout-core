@@ -180,8 +180,7 @@ export default function ParticipantsHeader({
       return userData.fullName || userData.firstName || participant.guest_name;
     }
 
-    // Si no, usar guest_name (con fallback si vino vacío — mismo criterio
-    // que EqualSplitSelectionModal.tsx)
+    // Si no, usar guest_name (con fallback si vino vacío)
     return participant.guest_name || t("defaultGuestName");
   };
 

@@ -5,6 +5,13 @@ import {
   type CommissionBreakdown,
   type CommissionRates,
 } from "@even/payments";
+import {
+  IVA_RATE,
+  DEFAULT_RESTAURANT_RATE,
+  CLIENT_COMMISSION_PERCENT,
+  RESTAURANT_COMMISSION_PERCENT,
+  IVA_FACTOR,
+} from "@/app/constants/fiscal";
 
 // Núcleo compartido en @even/payments; se re-exporta para no tocar a los callers.
 export {
@@ -33,15 +40,18 @@ export interface ItemCommissionRate {
 export function getItemCommissionRate(
   _unitPrice: number,
 ): ItemCommissionRate {
-  return { clientPays: 2.0, restaurantPays: 2.0 };
+  return {
+    clientPays: CLIENT_COMMISSION_PERCENT,
+    restaurantPays: RESTAURANT_COMMISSION_PERCENT,
+  };
 }
 
-// Precio que ve el cliente: precio real + comisión del cliente + IVA sobre
-// esa comisión, ya incrustados.
+// Precio que ve el cliente: precio real + comisión del cliente + su IVA. Con
+// 0% cliente es el precio real.
 export function getItemDisplayPrice(unitPrice: number): number {
   const rate = getItemCommissionRate(unitPrice);
   const commission = unitPrice * (rate.clientPays / 100);
-  const iva = commission * 0.16;
+  const iva = commission * IVA_RATE;
   return Math.round((unitPrice + commission + iva) * 100) / 100;
 }
 
@@ -88,7 +98,7 @@ function finalizeItemCommission(
   // ítem individualmente, no una tasa fija por subtotal.
   const blendedClientRate = baseAmount > 0 ? evenCommissionClient / baseAmount : 0;
   const blendedRestaurantRate =
-    baseAmount > 0 ? evenCommissionRestaurant / baseAmount : 0.02;
+    baseAmount > 0 ? evenCommissionRestaurant / baseAmount : DEFAULT_RESTAURANT_RATE;
 
   const subtotalForCommission = baseAmount + tipAmount;
   const finalCommissionClient = subtotalForCommission * blendedClientRate;
@@ -96,9 +106,9 @@ function finalizeItemCommission(
     subtotalForCommission * blendedRestaurantRate;
 
   const evenCommissionTotal = finalCommissionClient + finalCommissionRestaurant;
-  const ivaEvenClient = finalCommissionClient * 0.16;
-  const ivaEvenRestaurant = finalCommissionRestaurant * 0.16;
-  const ivaTip = tipAmount * 0.16;
+  const ivaEvenClient = finalCommissionClient * IVA_RATE;
+  const ivaEvenRestaurant = finalCommissionRestaurant * IVA_RATE;
+  const ivaTip = tipAmount * IVA_RATE;
 
   const evenClientCharge = r2(finalCommissionClient + ivaEvenClient);
   const evenRestaurantCharge = r2(
@@ -118,7 +128,7 @@ function finalizeItemCommission(
     evenCommissionTotal,
     evenCommissionClient: finalCommissionClient,
     evenCommissionRestaurant: finalCommissionRestaurant,
-    ivaEvenTotal: evenCommissionTotal * 0.16,
+    ivaEvenTotal: evenCommissionTotal * IVA_RATE,
     ivaEvenClient,
     ivaEvenRestaurant,
     evenClientCharge,
@@ -204,7 +214,7 @@ export function resolveTipAmountForTargetDisplay(
     zeroTip.baseAmount > 0
       ? zeroTip.evenCommissionClient / zeroTip.baseAmount
       : 0;
-  const factor = 1 + blendedClientRate * 1.16;
+  const factor = 1 + blendedClientRate * IVA_FACTOR;
 
   let tipAmount = factor > 0 ? targetDisplayPropina / factor : targetDisplayPropina;
   tipAmount = Math.max(Math.round(tipAmount * 100) / 100, 0);

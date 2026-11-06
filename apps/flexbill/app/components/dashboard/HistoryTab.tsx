@@ -21,8 +21,8 @@ import { invoiceService } from "@/app/services/invoice.service";
 import { ticketService } from "@/app/services/ticket.service";
 import { lockScroll, unlockScroll } from "@/app/utils/scrollLock";
 import { useModalBackClose } from "@/app/hooks/useModalBackClose";
-import { getItemDisplayPrice } from "@/app/utils/commissionCalculator";
 import ItemCustomizations from "@/app/components/ItemCustomizations";
+import { useRestaurant } from "@/app/context/RestaurantContext";
 
 interface OrderHistoryItem {
   orderType?:
@@ -50,6 +50,8 @@ interface OrderHistoryItem {
   restaurantId: number | null;
   restaurantName: string;
   restaurantLogo: string | null;
+  // branches.menu_show_images de la sucursal de esta orden
+  menuShowImages?: boolean;
   // Payment method info
   paymentMethodId?: number | null;
   paymentCardLastFour?: string | null;
@@ -73,6 +75,8 @@ function isCurrentMonth(dateStr: string): boolean {
 }
 
 export default function HistoryTab() {
+  const { restaurant: menuRestaurant } = useRestaurant();
+  const showImages = !!menuRestaurant && menuRestaurant.menu_show_images !== false;
   const t = useTranslations("HistoryTab");
   const tc = useTranslations("Common");
   const format = useFormatter();
@@ -504,21 +508,23 @@ export default function HistoryTab() {
                         key={dish.dishOrderId}
                         className="flex justify-between items-center gap-3 md:gap-4 lg:gap-5"
                       >
-                        <div className="size-14 md:size-16 lg:size-20 bg-gray-300 rounded-sm md:rounded-md flex items-center justify-center hover:scale-105 transition-transform duration-200 overflow-hidden">
-                          {dish.images?.[0] ? (
-                            <img
-                              src={dish.images[0]}
-                              alt="Dish preview"
-                              className="w-full h-full object-cover rounded-sm md:rounded-md"
-                            />
-                          ) : (
-                            <img
-                              src="/even/even-asterisk-evergreen.svg"
-                              alt="Logo Even"
-                              className="size-7 md:size-9 lg:size-11 object-contain"
-                            />
-                          )}
-                        </div>
+                        {(selectedOrderDetails.menuShowImages ?? showImages) && (
+                          <div className="size-14 md:size-16 lg:size-20 bg-gray-300 rounded-sm md:rounded-md flex items-center justify-center hover:scale-105 transition-transform duration-200 overflow-hidden">
+                            {dish.images?.[0] ? (
+                              <img
+                                src={dish.images[0]}
+                                alt="Dish preview"
+                                className="w-full h-full object-cover rounded-sm md:rounded-md"
+                              />
+                            ) : (
+                              <img
+                                src="/even/even-asterisk-evergreen.svg"
+                                alt="Logo Even"
+                                className="size-7 md:size-9 lg:size-11 object-contain"
+                              />
+                            )}
+                          </div>
+                        )}
                         {/* Dish Info */}
                         <div className="flex-1">
                           <p className="text-white font-medium text-base md:text-lg lg:text-xl capitalize">
@@ -527,51 +533,18 @@ export default function HistoryTab() {
                           <ItemCustomizations
                             customFields={dish.customFields}
                             variant="dark"
-                            formatPrice={(price) => {
-                              const unitPrice = (dish.price || 0) + (dish.extraPrice || 0);
-                              const inflates =
-                                (selectedOrderDetails.orderType === "tap-order-and-pay" ||
-                                  selectedOrderDetails.orderType === "flex-bill") &&
-                                unitPrice > 0;
-                              return inflates
-                                ? price * (getItemDisplayPrice(unitPrice) / unitPrice)
-                                : price;
-                            }}
                             className="mt-0.5"
                           />
-                          {(() => {
-                            // Flex Bill y Tap Order & Pay inflan el precio
-                            // mostrado (comisión por ítem) — los demás servicios
-                            // usan otro modelo de comisión y siguen mostrando el
-                            // precio real. Se infla según el orderType de la
-                            // orden, no según en qué app se esté viendo.
-                            const inflatesPrice =
-                              selectedOrderDetails.orderType === "flex-bill" ||
-                              selectedOrderDetails.orderType ===
-                                "tap-order-and-pay";
-                            const unitPrice =
-                              (dish.price || 0) + (dish.extraPrice || 0);
-                            const multiplier =
-                              inflatesPrice && unitPrice > 0
-                                ? getItemDisplayPrice(unitPrice) / unitPrice
-                                : 1;
-                            return (
-                              <>
-                                <p className="text-xs md:text-sm lg:text-base text-white/60">
-                                  $
-                                  {((dish.price || 0) * multiplier).toFixed(2)}{" "}
-                                  MXN {t("perUnit")}
-                                </p>
-                                {dish.extraPrice > 0 && (
-                                  <p className="text-xs md:text-sm lg:text-base text-white/60">
-                                    {t("extrasPrefix")}: $
-                                    {(dish.extraPrice * multiplier).toFixed(2)}{" "}
-                                    MXN
-                                  </p>
-                                )}
-                              </>
-                            );
-                          })()}
+                          {/* Precio real: la comisión que se haya cobrado sale aparte en el desglose */}
+                          <p className="text-xs md:text-sm lg:text-base text-white/60">
+                            ${(dish.price || 0).toFixed(2)} MXN {t("perUnit")}
+                          </p>
+                          {dish.extraPrice > 0 && (
+                            <p className="text-xs md:text-sm lg:text-base text-white/60">
+                              {t("extrasPrefix")}: ${dish.extraPrice.toFixed(2)}{" "}
+                              MXN
+                            </p>
+                          )}
                           {/* Status Badge — Pick & Go maneja el estatus a nivel de orden, no por platillo */}
                           {selectedOrderDetails.orderType !== "pick-and-go" &&
                             dish.status && (
@@ -586,17 +559,7 @@ export default function HistoryTab() {
                         {/* Total Price */}
                         <div className="text-right">
                           <p className="text-white font-medium text-base md:text-lg lg:text-xl">
-                            $
-                            {((selectedOrderDetails.orderType === "flex-bill" ||
-                              selectedOrderDetails.orderType ===
-                                "tap-order-and-pay") &&
-                            (dish.price || 0) + (dish.extraPrice || 0) > 0
-                              ? getItemDisplayPrice(
-                                  (dish.price || 0) + (dish.extraPrice || 0),
-                                ) * dish.quantity
-                              : dish.totalPrice
-                            )?.toFixed(2)}{" "}
-                            MXN
+                            ${dish.totalPrice?.toFixed(2)} MXN
                           </p>
                         </div>
                       </div>
@@ -728,109 +691,46 @@ export default function HistoryTab() {
                   {t("breakdownIntro")}
                 </p>
                 <div className="space-y-3 md:space-y-4 lg:space-y-5">
-                  {(() => {
-                    // Flex Bill y Tap Order & Pay esconden la comisión
-                    // adentro del precio por ítem — para esas órdenes el
-                    // desglose usa Subtotal (ya inflado) + Propina, nunca una
-                    // línea de comisión aparte. Los demás servicios sí cobran
-                    // de forma transparente, así que ahí se mantiene Consumo
-                    // + Propina + Comisión tal cual viene del backend.
-                    const inflatesPrice =
-                      selectedOrderDetails.orderType === "flex-bill" ||
-                      selectedOrderDetails.orderType === "tap-order-and-pay";
-
-                    if (!inflatesPrice) {
-                      return (
-                        <>
-                          {selectedOrderDetails.baseAmount != null && (
-                            <div className="flex justify-between items-center">
-                              <span className="text-black font-medium text-base md:text-lg lg:text-xl">
-                                {t("consumptionLabel")}
-                              </span>
-                              <span className="text-black font-medium text-base md:text-lg lg:text-xl">
-                                $
-                                {selectedOrderDetails.baseAmount.toFixed(2)}{" "}
-                                MXN
-                              </span>
-                            </div>
-                          )}
-                          {selectedOrderDetails.tipAmount > 0 && (
-                            <div className="flex justify-between items-center">
-                              <span className="text-black font-medium text-base md:text-lg lg:text-xl">
-                                {t("tipLabelPrefix")}
-                              </span>
-                              <span className="text-black font-medium text-base md:text-lg lg:text-xl">
-                                ${selectedOrderDetails.tipAmount.toFixed(2)}{" "}
-                                MXN
-                              </span>
-                            </div>
-                          )}
-                          {selectedOrderDetails.commissionAmount > 0 && (
-                            <div className="flex justify-between items-center">
-                              <span className="text-black font-medium text-base md:text-lg lg:text-xl">
-                                {t("serviceCommissionLabel")}
-                              </span>
-                              <span className="text-black font-medium text-base md:text-lg lg:text-xl">
-                                $
-                                {selectedOrderDetails.commissionAmount.toFixed(
-                                  2,
-                                )}{" "}
-                                MXN
-                              </span>
-                            </div>
-                          )}
-                        </>
-                      );
-                    }
-
-                    const displaySubtotal = (
-                      selectedOrderDetails.dishes || []
-                    ).reduce((sum: number, dish: any) => {
-                      const unitPrice =
-                        (dish.price || 0) + (dish.extraPrice || 0);
-                      if (unitPrice <= 0) return sum;
-                      return (
-                        sum +
-                        Math.round(
-                          getItemDisplayPrice(unitPrice) *
-                            dish.quantity *
-                            100,
-                        ) /
-                          100
-                      );
-                    }, 0);
-                    const displayPropina =
-                      Math.round(
-                        ((selectedOrderDetails.totalAmount || 0) -
-                          displaySubtotal) *
-                          100,
-                      ) / 100;
-
-                    return (
-                      <>
-                        {displaySubtotal > 0 && (
-                          <div className="flex justify-between items-center">
-                            <span className="text-black font-medium text-base md:text-lg lg:text-xl">
-                              {t("subtotalLabel")}
-                            </span>
-                            <span className="text-black font-medium text-base md:text-lg lg:text-xl">
-                              ${displaySubtotal.toFixed(2)} MXN
-                            </span>
-                          </div>
-                        )}
-                        {displayPropina > 0 && (
-                          <div className="flex justify-between items-center">
-                            <span className="text-black font-medium text-base md:text-lg lg:text-xl">
-                              {t("tipLabelPrefix")}
-                            </span>
-                            <span className="text-black font-medium text-base md:text-lg lg:text-xl">
-                              ${displayPropina.toFixed(2)} MXN
-                            </span>
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
+                  {/* Lo que de verdad se cobró, tal cual quedó registrado */}
+                  <>
+                    {selectedOrderDetails.baseAmount != null && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-black font-medium text-base md:text-lg lg:text-xl">
+                          {t("consumptionLabel")}
+                        </span>
+                        <span className="text-black font-medium text-base md:text-lg lg:text-xl">
+                          $
+                          {selectedOrderDetails.baseAmount.toFixed(2)}{" "}
+                          MXN
+                        </span>
+                      </div>
+                    )}
+                    {selectedOrderDetails.tipAmount > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-black font-medium text-base md:text-lg lg:text-xl">
+                          {t("tipLabelPrefix")}
+                        </span>
+                        <span className="text-black font-medium text-base md:text-lg lg:text-xl">
+                          ${selectedOrderDetails.tipAmount.toFixed(2)}{" "}
+                          MXN
+                        </span>
+                      </div>
+                    )}
+                    {selectedOrderDetails.commissionAmount > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-black font-medium text-base md:text-lg lg:text-xl">
+                          {t("serviceCommissionLabel")}
+                        </span>
+                        <span className="text-black font-medium text-base md:text-lg lg:text-xl">
+                          $
+                          {selectedOrderDetails.commissionAmount.toFixed(
+                            2,
+                          )}{" "}
+                          MXN
+                        </span>
+                      </div>
+                    )}
+                  </>
                 </div>
               </div>
             </div>
