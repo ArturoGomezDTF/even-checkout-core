@@ -103,6 +103,7 @@ export async function mockFlexBillApi(page: Page, { walletOrder, payments }: Fle
 
   const responses: Array<[string, RegExp, MockResponse]> = [
     ["GET", /^\/restaurants\/\d+\/\d+\/[^/]+\/validate$/, { success: true, data: { valid: true } }],
+    ["GET", /^\/restaurants\/\d+\/branches$/, { success: true, data: [{ id: 1, branch_number: BRANCH_NUMBER, name: "Sucursal E2E" }] }],
     ["GET", /^\/restaurants\/\d+\/\d+\/complete$/, { success: true, data: { restaurant, menu } }],
     [
       "GET",
@@ -137,6 +138,8 @@ export async function mockFlexBillApi(page: Page, { walletOrder, payments }: Fle
     // Tras un cobro exitoso: registra la transacción y abona a la cuenta de la mesa.
     ["POST", /^\/payment-transactions$/, { success: true, data: { id: "pt_e2e_1" } }],
     ["POST", new RegExp(`^${tablePath}\\/pay$`), { success: true, data: {} }],
+    // Sin POS integrado no hay nada que traer: la app sigue con la cuenta de Even.
+    ["POST", new RegExp(`^${tablePath}\\/sync-from-pos$`), { success: true, data: {} }],
     ["POST", /^\/payments\/(apple|google)-pay\/order$/, wallet],
   ];
 
