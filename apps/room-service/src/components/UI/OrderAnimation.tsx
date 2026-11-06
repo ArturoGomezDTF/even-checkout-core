@@ -37,6 +37,7 @@ const OrderAnimation = ({
   const tc = useTranslations("Common");
   const { navigateWithRoom } = useRoomNavigation();
   const { restaurant, loading } = useRestaurant();
+  const showImages = !!restaurant && restaurant.menu_show_images !== false;
   const { profile } = useAuth();
 
   const onConfirmRef = useRef(onConfirm);
@@ -327,21 +328,23 @@ const OrderAnimation = ({
                           key={`${item.id}-${index}`}
                           className="flex items-center gap-3 md:gap-4"
                         >
-                          <div className="size-10 md:size-12 lg:size-14 bg-gray-300 rounded-sm md:rounded-md flex items-center justify-center overflow-hidden shrink-0">
-                            {item.images && item.images[0] ? (
-                              <img
-                                src={item.images[0]}
-                                alt={item.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <img
-                                src="/even/even-asterisk-evergreen.svg"
-                                alt="Logo Even"
-                                className="size-6 md:size-8 lg:size-10 object-contain"
-                              />
-                            )}
-                          </div>
+                          {showImages && (
+                            <div className="size-10 md:size-12 lg:size-14 bg-gray-300 rounded-sm md:rounded-md flex items-center justify-center overflow-hidden shrink-0">
+                              {item.images && item.images[0] ? (
+                                <img
+                                  src={item.images[0]}
+                                  alt={item.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <img
+                                  src="/even/even-asterisk-evergreen.svg"
+                                  alt="Logo Even"
+                                  className="size-6 md:size-8 lg:size-10 object-contain"
+                                />
+                              )}
+                            </div>
+                          )}
                           <div className="flex-1">
                             <p className="text-black text-sm md:text-base lg:text-lg capitalize">
                               {item.name}

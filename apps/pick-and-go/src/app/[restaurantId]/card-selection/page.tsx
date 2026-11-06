@@ -33,6 +33,10 @@ import {
   clearStoredPaymentIntent,
   updateStoredPaymentIntent,
 } from "@/utils/paymentIdempotency";
+import {
+  getOrCreateWalletOrderId,
+  clearCachedWalletOrder,
+} from "@/utils/walletOrderCache";
 
 // Google Pay deshabilitado temporalmente — cambiar a false para reactivarlo.
 const GOOGLE_PAY_DISABLED = false;
@@ -476,48 +480,71 @@ export default function CardSelectionPage() {
 
     (async () => {
       try {
-        const orderResult = await paymentService.createApplePayOrder({
-          amount: totalAmount,
-          currency: "MXN",
-          restaurantId: restaurantId,
-          baseAmount,
-          tipAmount,
-          items: cartState.items.map((i) => ({
-            name: i.name,
-            price: i.price,
-            quantity: i.quantity || 1,
-            extraPrice: (i.extraPrice || 0) * (i.quantity || 1),
-            // even-backend #333: el id del carrito permite al servidor
-            // recalcular el consumo contra cart_items en vez de cobrar el
-            // total que mandamos. Es opcional en el backend: sin él, cobra
-            // igual que antes.
-            cartItemId: i.cartItemId,
-          })),
-          // Sin esto, eCartPay cobraba el platillo a precio
-          // completo aunque hubiera descuento — el backend solo LEE el %
-          // aquí, nunca lo consume.
-          userDiscountId:
-            accountDiscount?.source === "personal"
-              ? accountDiscount.id
-              : undefined,
-          promoRedemptionId:
-            accountDiscount?.source === "promo"
-              ? accountDiscount.id
-              : undefined,
-        });
+        let rejection: any = null;
+        const appleOrderId = await getOrCreateWalletOrderId(
+          "apple",
+          {
+            items: cartState.items.map((i) => ({
+              menuItemId: i.id,
+              quantity: i.quantity || 1,
+              extraPrice: i.extraPrice || 0,
+              customFields: i.customFields || null,
+            })),
+            tipAmount,
+            discountId: accountDiscount?.id ?? null,
+            total: totalAmount,
+          },
+          async () => {
+            const orderResult = await paymentService.createApplePayOrder({
+              amount: totalAmount,
+              currency: "MXN",
+              restaurantId: restaurantId,
+              baseAmount,
+              tipAmount,
+              items: cartState.items.map((i) => ({
+                name: i.name,
+                price: i.price,
+                quantity: i.quantity || 1,
+                extraPrice: (i.extraPrice || 0) * (i.quantity || 1),
+                // even-backend #333: el id del carrito permite al servidor
+                // recalcular el consumo contra cart_items en vez de cobrar el
+                // total que mandamos. Es opcional en el backend: sin él, cobra
+                // igual que antes.
+                cartItemId: i.cartItemId,
+              })),
+              // Sin esto, eCartPay cobraba el platillo a precio
+              // completo aunque hubiera descuento — el backend solo LEE el %
+              // aquí, nunca lo consume.
+              userDiscountId:
+                accountDiscount?.source === "personal"
+                  ? accountDiscount.id
+                  : undefined,
+              promoRedemptionId:
+                accountDiscount?.source === "promo"
+                  ? accountDiscount.id
+                  : undefined,
+            });
 
-        const appleOrderId =
-          (orderResult as any).orderId ?? orderResult.data?.orderId;
-        if (!orderResult.success || !appleOrderId) {
+            const id =
+              (orderResult as any).orderId ?? orderResult.data?.orderId;
+            if (!orderResult.success || !id) {
+              rejection = orderResult;
+              return null;
+            }
+            return id;
+          },
+        );
+
+        if (!appleOrderId) {
           console.warn(
             "⚠️ [AP-ORDER] No se pudo crear la orden:",
-            orderResult.error ?? orderResult,
+            rejection?.error ?? rejection,
           );
           // Un 4xx con código semántico es un rechazo definitivo (400
           // baseAmount <= 0, 422 payment_rejected, ...): reintentar con los
           // mismos datos fallaría igual, así que se cae a tarjeta guardada. Un
           // 5xx pasajero no oculta la wallet.
-          if (isDefinitiveWalletRejection(orderResult)) {
+          if (rejection && isDefinitiveWalletRejection(rejection)) {
             setApplePayUnavailable(true);
             setWalletOrderRejected(true);
           }
@@ -565,6 +592,7 @@ export default function CardSelectionPage() {
           console.log("✅ Apple Pay autorizado", event?.detail);
           sessionStorage.removeItem("even-current-order-id");
           sessionStorage.removeItem("even-current-payment-key");
+          clearCachedWalletOrder("apple");
           setApplePayPaymentId(event?.detail?.id || appleOrderId);
           setIsApplePayProcessing(true);
           setCompletedOrderItems([...cartItemsRef.current]);
@@ -620,45 +648,68 @@ export default function CardSelectionPage() {
 
     (async () => {
       try {
-        const orderResult = await paymentService.createGooglePayOrder({
-          amount: totalAmount,
-          currency: "MXN",
-          restaurantId: restaurantId,
-          baseAmount,
-          tipAmount,
-          items: cartState.items.map((i) => ({
-            name: i.name,
-            price: i.price,
-            quantity: i.quantity || 1,
-            extraPrice: (i.extraPrice || 0) * (i.quantity || 1),
-            // even-backend #333: el id del carrito permite al servidor
-            // recalcular el consumo contra cart_items en vez de cobrar el
-            // total que mandamos. Es opcional en el backend: sin él, cobra
-            // igual que antes.
-            cartItemId: i.cartItemId,
-          })),
-          userDiscountId:
-            accountDiscount?.source === "personal"
-              ? accountDiscount.id
-              : undefined,
-          promoRedemptionId:
-            accountDiscount?.source === "promo"
-              ? accountDiscount.id
-              : undefined,
-        });
+        let rejection: any = null;
+        const googleOrderId = await getOrCreateWalletOrderId(
+          "google",
+          {
+            items: cartState.items.map((i) => ({
+              menuItemId: i.id,
+              quantity: i.quantity || 1,
+              extraPrice: i.extraPrice || 0,
+              customFields: i.customFields || null,
+            })),
+            tipAmount,
+            discountId: accountDiscount?.id ?? null,
+            total: totalAmount,
+          },
+          async () => {
+            const orderResult = await paymentService.createGooglePayOrder({
+              amount: totalAmount,
+              currency: "MXN",
+              restaurantId: restaurantId,
+              baseAmount,
+              tipAmount,
+              items: cartState.items.map((i) => ({
+                name: i.name,
+                price: i.price,
+                quantity: i.quantity || 1,
+                extraPrice: (i.extraPrice || 0) * (i.quantity || 1),
+                // even-backend #333: el id del carrito permite al servidor
+                // recalcular el consumo contra cart_items en vez de cobrar el
+                // total que mandamos. Es opcional en el backend: sin él, cobra
+                // igual que antes.
+                cartItemId: i.cartItemId,
+              })),
+              userDiscountId:
+                accountDiscount?.source === "personal"
+                  ? accountDiscount.id
+                  : undefined,
+              promoRedemptionId:
+                accountDiscount?.source === "promo"
+                  ? accountDiscount.id
+                  : undefined,
+            });
 
-        const googleOrderId =
-          (orderResult as any).orderId ?? orderResult.data?.orderId;
-        if (!orderResult.success || !googleOrderId) {
+            const id =
+              (orderResult as any).orderId ?? orderResult.data?.orderId;
+            if (!orderResult.success || !id) {
+              rejection = orderResult;
+              return null;
+            }
+            return id;
+          },
+        );
+
+        if (!googleOrderId) {
           console.warn(
             "⚠️ [GP-ORDER] No se pudo crear la orden:",
-            orderResult.error ?? orderResult,
+            rejection?.error ?? rejection,
           );
           // Un 4xx con código semántico es un rechazo definitivo (400
           // baseAmount <= 0, 422 payment_rejected, ...): reintentar con los
           // mismos datos fallaría igual, así que se cae a tarjeta guardada. Un
           // 5xx pasajero no oculta la wallet.
-          if (isDefinitiveWalletRejection(orderResult)) {
+          if (rejection && isDefinitiveWalletRejection(rejection)) {
             setGooglePayUnavailable(true);
             setWalletOrderRejected(true);
           }
@@ -713,6 +764,7 @@ export default function CardSelectionPage() {
           stopGooglePay3dsWatch();
           sessionStorage.removeItem("even-current-order-id");
           sessionStorage.removeItem("even-current-payment-key");
+          clearCachedWalletOrder("google");
           setGooglePayToken(token);
           setGooglePayPaymentId(googleOrderId);
           setIsGooglePayProcessing(true);
@@ -2097,6 +2149,9 @@ export default function CardSelectionPage() {
                       </span>
                     </div>
                   )}
+                  {/* Pick & Go muestra la comisión aparte; Tap Order & Pay y
+                      FlexBill la incrustan en el precio (ver
+                      utils/commissionCalculator.ts). */}
                   {evenClientCharge > 0 && (
                     <div className="flex justify-between items-center">
                       <span className="text-black font-medium">

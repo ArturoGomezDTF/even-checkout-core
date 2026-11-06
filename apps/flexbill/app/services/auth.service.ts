@@ -28,7 +28,12 @@ export interface ProfileData {
   birthDate?: string;
   gender?: "male" | "female" | "other";
   photoUrl?: string;
+  acceptedTerms?: boolean;
 }
+
+export type TermsStatus = "needs_acceptance" | "needs_update_ack" | "ok";
+
+const TERMS_SOURCE = "flex-bill";
 
 class AuthService {
   private isRefreshing = false;
@@ -45,6 +50,55 @@ class AuthService {
 
   public setBranchNumber(branchNumber: number | null) {
     this.branchNumber = branchNumber;
+  }
+
+  // Servicio y sucursal que el backend guarda junto con la aceptación.
+  private termsContext() {
+    return {
+      source: TERMS_SOURCE,
+      restaurantId: this.restaurantId,
+      branchNumber: this.branchNumber,
+    };
+  }
+
+  private withTermsContext<T extends { acceptedTerms?: boolean }>(body: T) {
+    return body.acceptedTerms ? { ...body, ...this.termsContext() } : body;
+  }
+
+  // Check del toast de cambio de términos.
+  async acknowledgeTermsUpdate(): Promise<AuthResponse> {
+    const post = (token: string) =>
+      fetch(`${API_URL}/terms/acknowledge`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(this.termsContext()),
+      });
+
+    try {
+      const token = this.getAccessToken();
+      if (!token) return { success: false, error: "No estás autenticado" };
+
+      let response = await post(token);
+      if (response.status === 401) {
+        const newToken = await this.handleTokenRefresh();
+        if (!newToken) return { success: false, error: "Sesión expirada" };
+        response = await post(newToken);
+      }
+
+      const data = await response.json();
+      return response.ok
+        ? { success: true, data }
+        : {
+            success: false,
+            error: data.error?.message || data.message || "Error al guardar",
+          };
+    } catch (error) {
+      console.error("Error sending terms event:", error);
+      return { success: false, error: "Error al guardar" };
+    }
   }
 
   private subscribeTokenRefresh(callback: (token: string) => void): void {
@@ -174,7 +228,7 @@ class AuthService {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(profileData),
+        body: JSON.stringify(this.withTermsContext(profileData)),
       });
 
       const data = await response.json();
@@ -274,6 +328,7 @@ class AuthService {
 
   // Actualizar perfil del usuario autenticado
   async updateMyProfile(updates: Partial<ProfileData>): Promise<AuthResponse> {
+    updates = this.withTermsContext(updates);
     try {
       const token = this.getAccessToken();
 

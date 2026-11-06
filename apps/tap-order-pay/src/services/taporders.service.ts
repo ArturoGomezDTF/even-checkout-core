@@ -181,6 +181,8 @@ export interface ConfirmTapOrderResponse {
   // ni reencolar la impresión cuando la orden ya existía.
   code?: string;
   replayed?: boolean;
+  // Estatus HTTP solo en error; ausente si ni siquiera hubo respuesta (red).
+  status?: number;
 }
 
 class TapOrderService {
@@ -282,6 +284,7 @@ class TapOrderService {
         error: typeof res.error === "string" ? res.error : res.error?.message,
         code: res.code ?? (typeof res.error === "object" ? res.error?.code : undefined),
         replayed: res.replayed,
+        status: res.status,
       };
     } catch (error) {
       console.error("Error confirming tap order:", error);

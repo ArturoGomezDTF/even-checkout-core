@@ -35,6 +35,7 @@ export default function CartView() {
   const hasActivePOS =
     agentStatus !== null && agentStatus.hasIntegration && agentStatus.isActive;
   const { restaurant } = useRestaurant();
+  const showImages = !!restaurant && restaurant.menu_show_images !== false;
 
   const { state, updateQuantity, orderNotes, setOrderNotes, updateOrderNotes } =
     useCart();
@@ -171,7 +172,7 @@ export default function CartView() {
                 </div>
               ) : (
                 <div>
-                  <div className="text-black font-medium text-sm md:text-base lg:text-lg flex gap-10 md:gap-12 lg:gap-[68px] justify-end translate-y-4">
+                  <div className={`text-black font-medium text-sm md:text-base lg:text-lg flex gap-10 md:gap-12 lg:gap-[68px] justify-end ${showImages ? "translate-y-4" : "mb-1 md:mb-2"}`}>
                     <span>{t("qtyLabel")}</span>
                     <span>{t("priceLabel")}</span>
                   </div>
@@ -197,25 +198,27 @@ export default function CartView() {
                                 : ""
                             }`}
                           >
-                            <div className="flex-shrink-0">
-                              <div className="size-16 md:size-20 lg:size-24 bg-gray-300 rounded-sm md:rounded-md flex items-center justify-center hover:scale-105 transition-transform duration-200">
-                                {item.images &&
-                                item.images.length > 0 &&
-                                item.images[0] ? (
-                                  <img
-                                    src={item.images[0]}
-                                    alt="Dish preview"
-                                    className="w-full h-full object-cover rounded-sm md:rounded-md"
-                                  />
-                                ) : (
-                                  <img
-                                    src="/even/even-asterisk-evergreen.svg"
-                                    alt="Logo Even"
-                                    className="size-10 md:size-12 lg:size-14 object-contain"
-                                  />
-                                )}
+                            {showImages && (
+                              <div className="flex-shrink-0">
+                                <div className="size-16 md:size-20 lg:size-24 bg-gray-300 rounded-sm md:rounded-md flex items-center justify-center hover:scale-105 transition-transform duration-200">
+                                  {item.images &&
+                                  item.images.length > 0 &&
+                                  item.images[0] ? (
+                                    <img
+                                      src={item.images[0]}
+                                      alt="Dish preview"
+                                      className="w-full h-full object-cover rounded-sm md:rounded-md"
+                                    />
+                                  ) : (
+                                    <img
+                                      src="/even/even-asterisk-evergreen.svg"
+                                      alt="Logo Even"
+                                      className="size-10 md:size-12 lg:size-14 object-contain"
+                                    />
+                                  )}
+                                </div>
                               </div>
-                            </div>
+                            )}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <h3 className="text-base md:text-lg lg:text-xl text-black capitalize">

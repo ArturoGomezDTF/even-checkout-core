@@ -20,7 +20,6 @@ import {
 } from "@/interfaces/menuItemData";
 import { reviewsApi, Review, ReviewStats } from "@/services/reviews.service";
 import { useAuth } from "@/context/AuthContext";
-import { getItemDisplayPrice } from "@/utils/commissionCalculator";
 import { usePersonalItemDiscounts } from "@/hooks/usePersonalItemDiscounts";
 
 // Pure helpers — defined outside component to avoid recreation on every render
@@ -36,6 +35,15 @@ function parseCustomFields(item: MenuItemDB): CustomField[] {
     }
   }
   return item.custom_fields as CustomField[];
+}
+
+// Sin minSelections se conserva lo de antes: obligatorio = al menos 1
+function minSelectionsOf(field: CustomField): number {
+  if (field.type === "checkboxes" && (field.minSelections || 0) > 0)
+    return field.minSelections as number;
+  if (field.type === "dropdown" || field.type === "checkboxes")
+    return field.required ? 1 : 0;
+  return 0;
 }
 
 function adaptDish(item: MenuItemDB): MenuItemData {
@@ -62,6 +70,7 @@ export default function DishDetailPage() {
   const { navigateWithTable } = useTableNavigation();
   const { restaurant, menu, isOpen, restaurantId: ctxRestaurantId } =
     useRestaurant();
+  const showImages = !!restaurant && restaurant.menu_show_images !== false;
   const personalDiscounts = usePersonalItemDiscounts(ctxRestaurantId);
   const [localQuantity, setLocalQuantity] = useState(0);
   const [dishQuantity, setDishQuantity] = useState(1);
@@ -343,33 +352,15 @@ export default function DishDetailPage() {
     return basePrice + extraPrice;
   }, [dishData, customFieldSelections, effectiveDiscount]);
 
-  // Precio que se muestra al cliente (comisión Even ya incrustada) — nunca
-  // se manda al carrito, solo para pantalla. buildCartItem sigue usando
-  // totalPrice/basePrice reales.
-  const displayTotalPrice = useMemo(
-    () => getItemDisplayPrice(totalPrice),
-    [totalPrice],
-  );
-
-  // La comisión se calcula sobre el precio combinado (base + extras), no
-  // por separado — así que para que el precio base y cada extra mostrados
-  // sumen exacto contra displayTotalPrice, se reparte la misma inflación
-  // proporcionalmente entre todos los componentes.
-  const priceMultiplier = useMemo(
-    () => (totalPrice > 0 ? displayTotalPrice / totalPrice : 1),
-    [displayTotalPrice, totalPrice],
-  );
 
   // Validación de campos obligatorios — memoizada
   const isFormValid = useMemo(() => {
     if (!dishData?.customFields) return true;
     for (const field of dishData.customFields) {
-      if (
-        (field.type === "dropdown" || field.type === "checkboxes") &&
-        field.required
-      ) {
+      const min = minSelectionsOf(field);
+      if (min > 0) {
         const sel = customFieldSelections[field.id] as string[] | undefined;
-        if (!sel || sel.length === 0) return false;
+        if (!sel || sel.length < min) return false;
       }
     }
     return true;
@@ -772,64 +763,68 @@ export default function DishDetailPage() {
       />
 
       {/* Slider de imágenes */}
-      <div className="absolute top-0 left-0 w-full h-96 md:h-112 lg:h-128 z-0">
-        <div
-          className="relative w-full h-full overflow-hidden"
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          {dish.images.length > 0 ? (
-            dish.images.map((image, index) => (
-              <img
-                key={index}
-                src={image}
-                alt=""
-                className={`absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-500 ${
-                  index === currentImageIndex ? "opacity-100" : "opacity-0"
-                }`}
-              />
-            ))
-          ) : (
-            <div className="absolute top-0 left-0 w-full h-full bg-gray-300 flex items-center justify-center">
-              <img
-                src="/even/even-asterisk-evergreen.svg"
-                alt="Logo"
-                className="w-24 md:w-32 lg:w-40 h-24 md:h-32 lg:h-40 object-contain"
-              />
+      {showImages && (
+        <div className="absolute top-0 left-0 w-full h-96 md:h-112 lg:h-128 z-0">
+          <div
+            className="relative w-full h-full overflow-hidden"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            {dish.images.length > 0 ? (
+              dish.images.map((image, index) => (
+                <img
+                  key={index}
+                  src={image}
+                  alt=""
+                  className={`absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-500 ${
+                    index === currentImageIndex ? "opacity-100" : "opacity-0"
+                  }`}
+                />
+              ))
+            ) : (
+              <div className="absolute top-0 left-0 w-full h-full bg-gray-300 flex items-center justify-center">
+                <img
+                  src="/even/even-asterisk-evergreen.svg"
+                  alt="Logo"
+                  className="w-24 md:w-32 lg:w-40 h-24 md:h-32 lg:h-40 object-contain"
+                />
+              </div>
+            )}
+          </div>
+
+          {dishData?.isOutOfStock && (
+            <div className="absolute bottom-22 z-10">
+              <span className="bg-red-600 text-white text-xs md:text-sm font-bold px-3 py-1 tracking-wide">
+                {tc("outOfStockBadge")}
+              </span>
+            </div>
+          )}
+
+          {dish.images.length > 1 && (
+            <div className="absolute bottom-12 md:bottom-16 lg:bottom-20 left-0 right-0 flex justify-center gap-2 md:gap-3 z-10">
+              {dish.images.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentImageIndex(index)}
+                  className={`h-2.5 md:h-3 lg:h-3.5 rounded-full transition-all duration-300 border border-white cursor-pointer ${
+                    index === currentImageIndex
+                      ? "w-2.5 md:w-3 lg:w-3.5 bg-white"
+                      : "w-2.5 md:w-3 lg:w-3.5 bg-white/10"
+                  }`}
+                  aria-label={t("viewImageAlt", { number: index + 1 })}
+                />
+              ))}
             </div>
           )}
         </div>
-
-        {dishData?.isOutOfStock && (
-          <div className="absolute bottom-22 z-10">
-            <span className="bg-red-600 text-white text-xs md:text-sm font-bold px-3 py-1 tracking-wide">
-              {tc("outOfStockBadge")}
-            </span>
-          </div>
-        )}
-
-        {dish.images.length > 1 && (
-          <div className="absolute bottom-12 md:bottom-16 lg:bottom-20 left-0 right-0 flex justify-center gap-2 md:gap-3 z-10">
-            {dish.images.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentImageIndex(index)}
-                className={`h-2.5 md:h-3 lg:h-3.5 rounded-full transition-all duration-300 border border-white cursor-pointer ${
-                  index === currentImageIndex
-                    ? "w-2.5 md:w-3 lg:w-3.5 bg-white"
-                    : "w-2.5 md:w-3 lg:w-3.5 bg-white/10"
-                }`}
-                aria-label={t("viewImageAlt", { number: index + 1 })}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      )}
 
       <MenuHeaderDish />
 
-      <main className="mt-64 md:mt-80 lg:mt-96 relative z-10">
+      <main
+        className={`${showImages ? "mt-64 md:mt-80 lg:mt-96" : "mt-2 md:mt-4"} relative z-10`}
+      >
         <div className="bg-white rounded-t-4xl flex flex-col px-6 md:px-8 lg:px-10 pb-[100px] md:pb-[120px]">
           <div className="mt-8 md:mt-10 lg:mt-12">
             <div className="flex justify-between items-center text-black mb-6 md:mb-8">
@@ -883,23 +878,26 @@ export default function DishDetailPage() {
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium text-black capitalize">
                 {dish.name}
               </h2>
+              {!showImages && dishData?.isOutOfStock && (
+                <span className="bg-red-600 text-white text-xs md:text-sm font-bold px-3 py-1 tracking-wide mt-2">
+                  {tc("outOfStockBadge")}
+                </span>
+              )}
               {effectiveDiscount > 0 ? (
                 <div>
                   <h2 className="text-black line-through text-sm md:text-base lg:text-lg">
-                    ${getItemDisplayPrice(dish.price).toFixed(2)} MXN
+                    ${dish.price.toFixed(2)} MXN
                   </h2>
                   <span className="text-black text-xl md:text-2xl lg:text-3xl">
                     $
-                    {getItemDisplayPrice(
-                      dish.price * (1 - effectiveDiscount / 100),
-                    ).toFixed(2)}{" "}
+                    {(dish.price * (1 - effectiveDiscount / 100)).toFixed(2)}{" "}
                     MXN
                   </span>
                 </div>
               ) : (
                 <div>
                   <h2 className="text-black text-xl md:text-2xl lg:text-3xl">
-                    ${getItemDisplayPrice(dish.price).toFixed(2)} MXN
+                    ${dish.price.toFixed(2)} MXN
                   </h2>
                 </div>
               )}
@@ -936,14 +934,13 @@ export default function DishDetailPage() {
                           <h3 className="font-medium text-black text-xl md:text-2xl lg:text-3xl mb-4">
                             {field.name}
                           </h3>
-                          {(field.type === "dropdown" ||
-                            field.type === "checkboxes") &&
-                            field.required &&
+                          {minSelectionsOf(field) > 0 &&
                             (() => {
                               const sel = customFieldSelections[field.id] as
                                 | string[]
                                 | undefined;
-                              const has = sel && sel.length > 0;
+                              const has =
+                                !!sel && sel.length >= minSelectionsOf(field);
                               return (
                                 <div
                                   className={`rounded px-2 py-1 ${has ? "bg-gray-100" : "bg-green-100"}`}
@@ -1031,7 +1028,8 @@ export default function DishDetailPage() {
                                     field.id
                                   ] as string[]) || [];
                                 const max = field.maxSelections || 1;
-                                return sel.length > 0 ? (
+                                const min = field.minSelections || 0;
+                                return sel.length > 0 && sel.length >= min ? (
                                   <span className="text-black text-sm md:text-base mt-1">
                                     {t("productsSelected", {
                                       count: sel.length,
@@ -1039,7 +1037,11 @@ export default function DishDetailPage() {
                                   </span>
                                 ) : (
                                   <span className="text-gray-600 text-sm md:text-base mt-1">
-                                    {t("selectUpTo", { max })}
+                                    {min > 0 && min >= max
+                                      ? t("selectExactly", { count: max })
+                                      : min > 0
+                                        ? t("selectBetween", { min, max })
+                                        : t("selectUpTo", { max })}
                                   </span>
                                 );
                               })()}
@@ -1090,7 +1092,7 @@ export default function DishDetailPage() {
                                     ) : (
                                       option.price > 0 && (
                                         <span className="text-even-grass font-medium text-sm md:text-base lg:text-lg">
-                                          +${(option.price * priceMultiplier).toFixed(2)}
+                                          +${option.price.toFixed(2)}
                                         </span>
                                       )
                                     )}
@@ -1142,7 +1144,7 @@ export default function DishDetailPage() {
                                       ) : (
                                         option.price > 0 && (
                                           <span className="text-even-grass font-medium text-sm md:text-base lg:text-lg">
-                                            +${(option.price * priceMultiplier).toFixed(2)}
+                                            +${option.price.toFixed(2)}
                                           </span>
                                         )
                                       )}
@@ -1219,7 +1221,7 @@ export default function DishDetailPage() {
                                     ) : (
                                       option.price > 0 && (
                                         <span className="text-even-grass font-medium text-sm md:text-base lg:text-lg">
-                                          +${(option.price * priceMultiplier).toFixed(2)}
+                                          +${option.price.toFixed(2)}
                                         </span>
                                       )
                                     )}
@@ -1343,7 +1345,7 @@ export default function DishDetailPage() {
                   {dishData?.isOutOfStock
                     ? t("outOfStockCta")
                     : t(isEditMode ? "updateCartCta" : "addToCartCta", {
-                        amount: (displayTotalPrice * dishQuantity).toFixed(2),
+                        amount: (totalPrice * dishQuantity).toFixed(2),
                       })}
                 </span>
               </button>
@@ -1373,7 +1375,7 @@ export default function DishDetailPage() {
 
             <div className="px-6 md:px-8 lg:px-10 flex items-center justify-center mb-4 md:mb-6">
               <div className="flex flex-col justify-center items-center gap-3 md:gap-4">
-                {dish.images.length > 0 ? (
+                {!showImages ? null : dish.images.length > 0 ? (
                   <img
                     src={dish.images[0]}
                     alt={dish.name}

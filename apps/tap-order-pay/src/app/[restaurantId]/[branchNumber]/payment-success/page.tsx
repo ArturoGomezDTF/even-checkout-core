@@ -29,7 +29,6 @@ import {
 import { getCardTypeIcon } from "@/utils/cardIcons";
 import { tapOrderService } from "@/services/taporders.service";
 import type { TapOrder, LastOrderDish } from "@/services/taporders.service";
-import { getDisplayTip, getItemDisplayPrice } from "@/utils/commissionCalculator";
 import { useModalBackClose } from "@/hooks/useModalBackClose";
 import ItemCustomizations from "@/components/ItemCustomizations";
 
@@ -39,6 +38,7 @@ export default function PaymentSuccessPage() {
   const format = useFormatter();
   const params = useParams();
   const { setRestaurantId, setBranchNumber, restaurant } = useRestaurant();
+  const showImages = !!restaurant && restaurant.menu_show_images !== false;
   const restaurantId = params?.restaurantId as string;
   const branchNumber = params?.branchNumber as string;
   const { state } = useTable();
@@ -224,23 +224,20 @@ export default function PaymentSuccessPage() {
   // dishOrders: se carga del backend o del storage como fallback
   const [dishOrders, setDishOrders] = useState<any[]>([]);
 
-  // Subtotal mostrado en el "Desglose del pago": suma de los precios por
-  // ítem ya con su comisión escondida adentro (mismo cálculo que la lista de
-  // "Items de la orden" abajo) — nunca se desglosa la comisión como línea
-  // aparte, va incrustada acá y en la Propina.
-  const displaySubtotal = useMemo(
+  const itemsSubtotal = useMemo(
     () =>
       dishOrders.reduce((sum, dish: any) => {
         const unitPrice = (dish.price || 0) + (dish.extra_price || 0);
         const quantity = dish.quantity || 1;
         if (unitPrice <= 0) return sum;
-        return (
-          sum +
-          Math.round(getItemDisplayPrice(unitPrice) * quantity * 100) / 100
-        );
+        return sum + Math.round(unitPrice * quantity * 100) / 100;
       }, 0),
     [dishOrders],
   );
+  const subtotal = paymentDetails?.baseAmount || itemsSubtotal;
+  const serviceCharge =
+    (paymentDetails?.evenCommissionClient || 0) +
+    (paymentDetails?.ivaEvenClient || 0);
   const [orderCreatedAt, setOrderCreatedAt] = useState<Date | null>(null);
 
   const fetchDishOrders = async () => {
@@ -643,18 +640,13 @@ export default function PaymentSuccessPage() {
                   </h3>
                   <div className="space-y-3 md:space-y-4 lg:space-y-5">
                     {dishOrders.map((dish: any, index: number) => {
-                      // Precio mostrado: (precio base + extras) con la comisión
-                      // por ítem incrustada, × cantidad — mismo mecanismo que
-                      // HistoryTab/OrderAnimation para Tap Order & Pay.
                       const itemPrice = dish.price || 0;
                       const extraPrice = dish.extra_price || 0;
                       const quantity = dish.quantity || 1;
                       const unitPrice = itemPrice + extraPrice;
                       const calculatedTotal =
                         unitPrice > 0
-                          ? Math.round(
-                              getItemDisplayPrice(unitPrice) * quantity * 100,
-                            ) / 100
+                          ? Math.round(unitPrice * quantity * 100) / 100
                           : 0;
 
                       return (
@@ -662,7 +654,7 @@ export default function PaymentSuccessPage() {
                           key={`${dish.dish_order_id || "dish"}-${index}-${dish.item}`}
                           className="flex justify-between items-center gap-3 md:gap-4 lg:gap-5"
                         >
-                          {dish.images &&
+                          {showImages && dish.images &&
                             dish.images.length > 0 &&
                             dish.images[0] && (
                               <img
@@ -841,25 +833,27 @@ export default function PaymentSuccessPage() {
                       key={dish.id || index}
                       className="flex items-start gap-3 md:gap-4 lg:gap-5 bg-white/5 rounded-xl md:rounded-2xl p-3 md:p-4 lg:p-5 border border-white/10"
                     >
-                      <div className="shrink-0">
-                        <div className="size-16 md:size-20 lg:size-24 bg-gray-300 rounded-sm flex items-center justify-center overflow-hidden">
-                          {dish.images &&
-                          dish.images.length > 0 &&
-                          dish.images[0] ? (
-                            <img
-                              src={dish.images[0]}
-                              alt={dish.item}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <img
-                              src={"/even/even-asterisk-evergreen.svg"}
-                              alt="Logo Even"
-                              className="size-12 md:size-14 lg:size-16 object-contain"
-                            />
-                          )}
+                      {showImages && (
+                        <div className="shrink-0">
+                          <div className="size-16 md:size-20 lg:size-24 bg-gray-300 rounded-sm flex items-center justify-center overflow-hidden">
+                            {dish.images &&
+                            dish.images.length > 0 &&
+                            dish.images[0] ? (
+                              <img
+                                src={dish.images[0]}
+                                alt={dish.item}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <img
+                                src={"/even/even-asterisk-evergreen.svg"}
+                                alt="Logo Even"
+                                className="size-12 md:size-14 lg:size-16 object-contain"
+                              />
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <h3 className="text-base md:text-lg lg:text-xl text-white font-medium capitalize">
                           {dish.item}
@@ -869,7 +863,6 @@ export default function PaymentSuccessPage() {
                           customFields={dish.custom_fields}
                           variant="dark"
                           onlyPaid={true}
-                          formatPrice={getItemDisplayPrice}
                           className="mt-1 md:mt-1.5 lg:mt-2"
                         />
 
@@ -888,13 +881,7 @@ export default function PaymentSuccessPage() {
                         </p>
                         <p className="text-base md:text-lg lg:text-xl text-white font-medium">
                           $
-                          {(
-                            getItemDisplayPrice(
-                              dish.quantity > 0
-                                ? dish.total_price / dish.quantity
-                                : dish.total_price,
-                            ) * dish.quantity
-                          ).toFixed(2)}
+                          {Number(dish.total_price || 0).toFixed(2)}
                         </p>
                       </div>
                     </div>
@@ -947,34 +934,38 @@ export default function PaymentSuccessPage() {
                 El total se obtiene de la suma de:
               </p>
               <div className="space-y-3 md:space-y-4 lg:space-y-5">
-                {displaySubtotal > 0 && (
+                {subtotal > 0 && (
                   <div className="flex justify-between items-center">
                     <span className="text-black font-medium text-base md:text-lg lg:text-xl">
                       + Subtotal
                     </span>
                     <span className="text-black font-medium text-base md:text-lg lg:text-xl">
-                      ${displaySubtotal.toFixed(2)} MXN
+                      ${subtotal.toFixed(2)} MXN
                     </span>
                   </div>
                 )}
 
-                {(() => {
-                  // Propina con su comisión incrustada (no hay línea de
-                  // comisión; ver commissionCalculator.ts)
-                  const displayPropina = getDisplayTip(amount, displaySubtotal);
-                  return (
-                    displayPropina > 0 && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-black font-medium text-base md:text-lg lg:text-xl">
-                          + Propina
-                        </span>
-                        <span className="text-black font-medium text-base md:text-lg lg:text-xl">
-                          ${displayPropina.toFixed(2)} MXN
-                        </span>
-                      </div>
-                    )
-                  );
-                })()}
+                {paymentDetails?.tipAmount > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-black font-medium text-base md:text-lg lg:text-xl">
+                      + Propina
+                    </span>
+                    <span className="text-black font-medium text-base md:text-lg lg:text-xl">
+                      ${paymentDetails.tipAmount.toFixed(2)} MXN
+                    </span>
+                  </div>
+                )}
+
+                {serviceCharge > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-black font-medium text-base md:text-lg lg:text-xl">
+                      + Comisión de servicio
+                    </span>
+                    <span className="text-black font-medium text-base md:text-lg lg:text-xl">
+                      ${serviceCharge.toFixed(2)} MXN
+                    </span>
+                  </div>
+                )}
 
                 {paymentDetails?.installments && (
                   <div className="flex justify-between items-center">

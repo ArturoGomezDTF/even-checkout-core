@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 import { authService } from "@/services/auth.service";
 import { useRestaurant } from "@/context/RestaurantContext";
 import { useAuth } from "@/context/AuthContext";
+import TermsCheckbox from "@/components/TermsCheckbox";
 import { useTableNavigation } from "@/hooks/useTableNavigation";
 import { useGuest } from "@/context/GuestContext";
 import { isProfileComplete, ageFromBirthDate } from "@/utils/profile";
@@ -59,6 +60,7 @@ export default function AuthPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [age, setAge] = useState<number | "">("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   // Envío del SMS en curso: el paso de código se muestra de inmediato
   const [sendingCode, setSendingCode] = useState(false);
@@ -155,8 +157,9 @@ export default function AuthPage() {
   // directo a esta pantalla, no tiene sentido pedirle teléfono/OTP de nuevo:
   // saltar directo al step de perfil si falta el nombre o la fecha de
   // nacimiento, precargando lo que ya exista.
+  // Solo en el step "phone": tras verificar OTP lo decide handleVerifyOTP.
   useEffect(() => {
-    if (isAuthLoading || !isAuthenticated || step === "profile") return;
+    if (isAuthLoading || !isAuthenticated || step !== "phone") return;
     if (!isProfileComplete(profile)) {
       setFirstName(profile?.firstName || "");
       setLastName(profile?.lastName || "");
@@ -357,7 +360,7 @@ export default function AuthPage() {
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (age === "") return;
+    if (age === "" || !acceptedTerms) return;
     setError("");
     setLoading(true);
 
@@ -367,6 +370,7 @@ export default function AuthPage() {
         firstName,
         lastName,
         birthDate: `${birthYear}-01-01`,
+        acceptedTerms: true,
       });
 
       if (response.success) {
@@ -647,9 +651,15 @@ export default function AuthPage() {
               </select>
             </div>
 
+            <TermsCheckbox
+              checked={acceptedTerms}
+              onChange={setAcceptedTerms}
+              disabled={loading}
+            />
+
             <button
               type="submit"
-              disabled={loading || !firstName || age === ""}
+              disabled={loading || !firstName || age === "" || !acceptedTerms}
               className="w-full bg-even-grass text-even-evergreen hover:opacity-90 py-3 rounded-full font-medium transition-opacity disabled:bg-even-grass/30 disabled:text-even-evergreen/40 disabled:cursor-not-allowed mt-6"
             >
               {loading ? t("saving") : t("continueCta")}

@@ -8,12 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import MenuHeaderBack from "@/components/headers/MenuHeaderBack";
 import { X } from "lucide-react";
 import ValidationError from "@/components/ValidationError";
-import {
-  calculateCommissions,
-  getDisplaySubtotal,
-  getDisplayTip,
-  resolveTipAmountForTargetDisplay,
-} from "@/utils/commissionCalculator";
+import { calculateCommissions } from "@/utils/commissionCalculator";
 
 export default function OrderConfirmPage() {
   const t = useTranslations("OrderConfirmPage");
@@ -30,68 +25,17 @@ export default function OrderConfirmPage() {
   const [showCustomTipInput, setShowCustomTipInput] = useState(false);
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
 
-  // Subtotal fijo — consumo + su propia comisión, redondeado por ítem (ver
-  // getDisplaySubtotal). No se mueve cuando el cliente cambia cuánto quiere
-  // dar de propina; la propina absorbe la comisión adicional que genera.
-  const displaySubtotal = useMemo(
-    () => getDisplaySubtotal(cartState.items),
-    [cartState.items],
-  );
-
-  // Lo que el comensal quiere ver como "Propina": el % elegido sobre el
-  // subtotal fijo y, en "Otro", literal lo que tecleó. Ya incluye la comisión
-  // de la propina (sin línea aparte; ver convención en commissionCalculator.ts).
-  const targetDisplayPropina = useMemo(() => {
+  const tipAmount = useMemo(() => {
     if (customTip && parseFloat(customTip) > 0) return parseFloat(customTip);
-    return Math.round(((displaySubtotal * tipPercentage) / 100) * 100) / 100;
-  }, [customTip, displaySubtotal, tipPercentage]);
+    return Math.round(((baseAmount * tipPercentage) / 100) * 100) / 100;
+  }, [customTip, baseAmount, tipPercentage]);
 
-  // Propina real que se cobra y viaja al backend/POS: la mostrada menos la
-  // comisión que genera. Con "Otro" $50 llegan ~$48.86 al POS, no $50 (decisión
-  // de #56, documentada en commissionCalculator.ts).
-  const tipAmount = useMemo(
-    () =>
-      resolveTipAmountForTargetDisplay(
-        (tip) => calculateCommissions(baseAmount, tip),
-        displaySubtotal,
-        targetDisplayPropina,
-      ),
-    [baseAmount, displaySubtotal, targetDisplayPropina],
-  );
-
-  const rawCommissions = useMemo(
+  const commissions = useMemo(
     () => calculateCommissions(baseAmount, tipAmount),
     [baseAmount, tipAmount],
   );
 
-  // Sin propina, Total debe ser exactamente el Subtotal fijo — pero
-  // calculateCommissions usa una tasa sobre el crudo sin redondear y
-  // redondea una sola vez al final, mientras displaySubtotal redondea por
-  // ítem (ver comentario en getDisplaySubtotal). Sin esto, "0%" mostraba una
-  // "propina fantasma" de $0.01. Mismo fix que tip-selection en even-flexbill.
-  const commissions = useMemo(() => {
-    if (
-      tipAmount === 0 &&
-      rawCommissions.totalAmountCharged !== displaySubtotal
-    ) {
-      return {
-        ...rawCommissions,
-        evenClientCharge:
-          Math.round(
-            (rawCommissions.evenClientCharge -
-              (rawCommissions.totalAmountCharged - displaySubtotal)) *
-              100,
-          ) / 100,
-        totalAmountCharged: displaySubtotal,
-      };
-    }
-    return rawCommissions;
-  }, [rawCommissions, tipAmount, displaySubtotal]);
-
   const { totalAmountCharged: totalAmount } = commissions;
-
-  // Propina mostrada = Total - Subtotal (cuadra con targetDisplayPropina).
-  const displayTip = getDisplayTip(totalAmount, displaySubtotal);
 
   const isUnderMinimum = totalAmount < MINIMUM_AMOUNT;
 
@@ -213,7 +157,7 @@ export default function OrderConfirmPage() {
                   {tc("subtotal")}
                 </span>
                 <span className="text-black font-medium text-base md:text-lg lg:text-xl">
-                  ${displaySubtotal.toFixed(2)} MXN
+                  ${baseAmount.toFixed(2)} MXN
                 </span>
               </div>
             </div>
@@ -277,10 +221,10 @@ export default function OrderConfirmPage() {
                 </div>
               )}
 
-              {displayTip > 0 && (
+              {tipAmount > 0 && (
                 <div className="flex justify-end items-center mt-2 text-sm">
                   <span className="text-even-grass font-medium">
-                    +${displayTip.toFixed(2)} MXN
+                    +${tipAmount.toFixed(2)} MXN
                   </span>
                 </div>
               )}

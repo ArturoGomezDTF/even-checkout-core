@@ -57,6 +57,7 @@ function ReorderModal({
     restaurant,
     menu,
   } = useRestaurant();
+  const showImages = !!restaurant && restaurant.menu_show_images !== false;
   const { guestName } = useGuest();
   const { navigateWithTable } = useTableNavigation();
 
@@ -435,38 +436,45 @@ function ReorderModal({
                       </div>
 
                       {/* Image */}
-                      <div className="flex-shrink-0 relative">
-                        <div className="size-16 md:size-20 rounded-sm overflow-hidden bg-gray-300">
-                          {order.images &&
-                          order.images.length > 0 &&
-                          order.images[0] ? (
-                            <img
-                              src={order.images[0]}
-                              alt={order.item}
-                              className={`w-full h-full object-cover ${itemIsOutOfStock ? "blur-sm" : ""}`}
-                            />
-                          ) : (
-                            <img
-                              src="/even/even-asterisk-evergreen.svg"
-                              alt="Logo Even"
-                              className={`w-full h-full object-contain p-2 ${itemIsOutOfStock ? "blur-sm" : ""}`}
-                            />
+                      {showImages && (
+                        <div className="flex-shrink-0 relative">
+                          <div className="size-16 md:size-20 rounded-sm overflow-hidden bg-gray-300">
+                            {order.images &&
+                            order.images.length > 0 &&
+                            order.images[0] ? (
+                              <img
+                                src={order.images[0]}
+                                alt={order.item}
+                                className={`w-full h-full object-cover ${itemIsOutOfStock ? "blur-sm" : ""}`}
+                              />
+                            ) : (
+                              <img
+                                src="/even/even-asterisk-evergreen.svg"
+                                alt="Logo Even"
+                                className={`w-full h-full object-contain p-2 ${itemIsOutOfStock ? "blur-sm" : ""}`}
+                              />
+                            )}
+                          </div>
+                          {itemIsOutOfStock && (
+                            <div className="absolute bottom-0.5 left-0.5">
+                              <span className="bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full tracking-wide">
+                                {tc("outOfStockBadge")}
+                              </span>
+                            </div>
                           )}
                         </div>
-                        {itemIsOutOfStock && (
-                          <div className="absolute bottom-0.5 left-0.5">
-                            <span className="bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full tracking-wide">
-                              {tc("outOfStockBadge")}
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                      )}
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <h3 className="text-base md:text-lg text-white font-medium capitalize">
                           {order.item}
                         </h3>
+                        {!showImages && itemIsOutOfStock && (
+                          <span className="inline-block bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full tracking-wide">
+                            {tc("outOfStockBadge")}
+                          </span>
+                        )}
                         <ItemCustomizations
                           customFields={customFields}
                           variant="dark"

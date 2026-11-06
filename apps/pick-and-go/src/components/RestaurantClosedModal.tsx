@@ -2,8 +2,12 @@
 
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
-import { useTranslations } from "next-intl";
-import { getNextOpeningTime } from "../utils/restaurantHours";
+import { useLocale, useTranslations } from "next-intl";
+import {
+  getNextOpeningTime,
+  getOrderableFromParts,
+} from "../utils/restaurantHours";
+import { useRestaurant } from "../context/RestaurantContext";
 import { OpeningHours } from "../utils/restaurantHours";
 
 interface RestaurantClosedModalProps {
@@ -23,6 +27,8 @@ export default function RestaurantClosedModal({
 }: RestaurantClosedModalProps) {
   const t = useTranslations("RestaurantClosedModal");
   const tc = useTranslations("Common");
+  const locale = useLocale();
+  const { orderableFrom } = useRestaurant();
   // Bloquear scroll cuando el modal está abierto
   useEffect(() => {
     if (isOpen) {
@@ -39,7 +45,17 @@ export default function RestaurantClosedModal({
 
   if (!isOpen) return null;
 
-  const nextOpeningTime = getNextOpeningTime(openingHours);
+  const nextOpeningTime = orderableFrom
+    ? null
+    : getNextOpeningTime(openingHours);
+  const when = orderableFrom
+    ? (() => {
+        const p = getOrderableFromParts(orderableFrom, locale);
+        if (p.kind === "today") return t("whenToday", { time: p.time });
+        if (p.kind === "tomorrow") return t("whenTomorrow", { time: p.time });
+        return t("whenDay", { day: p.day, time: p.time });
+      })()
+    : null;
 
   return createPortal(
     <div
@@ -53,7 +69,7 @@ export default function RestaurantClosedModal({
         <div className="p-6 md:p-8 lg:p-10 max-w-2xl mx-auto">
           <div className="flex justify-center items-start mb-4 md:mb-5 lg:mb-6">
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-black text-center">
-              {t("title")}
+              {when ? t("notYetTitle") : t("title")}
             </h2>
           </div>
 
@@ -85,7 +101,9 @@ export default function RestaurantClosedModal({
 
           <div className="space-y-4 md:space-y-5 lg:space-y-6">
             <p className="text-gray-600 text-base md:text-lg lg:text-xl text-center">
-              {t("message", { name: restaurantName ?? "" })}
+              {when
+                ? t("notYetMessage", { when })
+                : t("message", { name: restaurantName ?? "" })}
             </p>
 
             {nextOpeningTime && (

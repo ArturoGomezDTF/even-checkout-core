@@ -4,7 +4,7 @@ import { useCart } from "@/context/CartContext";
 import { useTableNavigation } from "@/hooks/useTableNavigation";
 import { usePayment } from "@/context/PaymentContext";
 import { useValidateAccess } from "@/hooks/useValidateAccess";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/context/AuthContext";
@@ -20,11 +20,7 @@ import {
   paymentService,
   isDefinitiveWalletRejection,
 } from "@/services/payment.service";
-import {
-  calculateCommissions,
-  getDisplaySubtotal,
-  getDisplayTip,
-} from "@/utils/commissionCalculator";
+import { calculateCommissions } from "@/utils/commissionCalculator";
 import { useAccountDiscount } from "@/hooks/useAccountDiscount";
 import { USER_DISCOUNT_SERVICE } from "@/services/userDiscounts.service";
 import { useCheckoutContext } from "@/hooks/useCheckoutContext";
@@ -35,9 +31,13 @@ import {
   clearStoredPaymentIntent,
   updateStoredPaymentIntent,
 } from "@/utils/paymentIdempotency";
+import {
+  getOrCreateWalletOrderId,
+  clearCachedWalletOrder,
+} from "@/utils/walletOrderCache";
 
 // Google Pay deshabilitado temporalmente — cambiar a false para reactivarlo.
-const GOOGLE_PAY_DISABLED = true;
+const GOOGLE_PAY_DISABLED = false;
 
 // Cadencia del polling de "Verificando tu pago…".
 const POLL_INTERVAL_MS = 3000;
@@ -90,19 +90,6 @@ export default function CardSelectionPage() {
   const baseAmount =
     Math.round((cartBaseAmount - orderDiscountAmount) * 100) / 100;
   const MINIMUM_AMOUNT = 20;
-
-  // Subtotal/descuento que se muestran en pantalla (comisión Even ya
-  // incrustada, igual que en order-confirm) — baseAmount/orderDiscountAmount
-  // reales de arriba siguen siendo la autoridad para comisión y cobro; el
-  // descuento inflado es proporcional al mismo % sobre el subtotal inflado,
-  // para que Subtotal - Descuento se vea consistente en pantalla.
-  const displaySubtotal = useMemo(
-    () => getDisplaySubtotal(cartState.items),
-    [cartState.items],
-  );
-  const displayDiscountAmount = accountDiscount
-    ? Math.round(displaySubtotal * accountDiscount.discountPercentage) / 100
-    : 0;
 
   // Propina desde URL
   const tipAmountFromParam = parseFloat(searchParams.get("tipAmount") || "0");
@@ -366,50 +353,74 @@ export default function CardSelectionPage() {
 
     (async () => {
       try {
-        const orderResult = await paymentService.createApplePayOrder({
-          amount: totalAmount,
-          currency: "MXN",
-          restaurantId: restaurantId,
-          customerName: profileRef.current
-            ? [profileRef.current.firstName, profileRef.current.lastName]
-                .filter(Boolean)
-                .join(" ") || undefined
-            : guestNameRef.current || cartUserNameRef.current || undefined,
-          baseAmount,
-          tipAmount,
-          items: cartState.items.map((i) => ({
-            name: i.name,
-            price: i.price,
-            quantity: i.quantity || 1,
-            extraPrice: (i.extraPrice || 0) * (i.quantity || 1),
-            // even-backend #333: el id del carrito permite al servidor
-            // recalcular el consumo contra cart_items en vez de cobrar el
-            // total que mandamos. Es opcional en el backend: sin él, cobra
-            // igual que antes.
-            cartItemId: i.cartItemId,
-          })),
-          userDiscountId:
-            accountDiscount?.source === "personal"
-              ? accountDiscount.id
-              : undefined,
-          promoRedemptionId:
-            accountDiscount?.source === "promo"
-              ? accountDiscount.id
-              : undefined,
-        });
+        let rejection: any = null;
+        const appleOrderId = await getOrCreateWalletOrderId(
+          "apple",
+          {
+            items: cartState.items.map((i) => ({
+              menuItemId: i.id,
+              quantity: i.quantity || 1,
+              extraPrice: i.extraPrice || 0,
+              customFields: i.customFields || null,
+            })),
+            tipAmount,
+            discountId: accountDiscount?.id ?? null,
+            total: totalAmount,
+          },
+          async () => {
+            const orderResult = await paymentService.createApplePayOrder({
+              amount: totalAmount,
+              currency: "MXN",
+              restaurantId: restaurantId,
+              customerName: profileRef.current
+                ? [profileRef.current.firstName, profileRef.current.lastName]
+                    .filter(Boolean)
+                    .join(" ") || undefined
+                : guestNameRef.current || cartUserNameRef.current || undefined,
+              baseAmount,
+              tipAmount,
+              items: cartState.items.map((i) => ({
+                name: i.name,
+                price: i.price,
+                quantity: i.quantity || 1,
+                extraPrice: (i.extraPrice || 0) * (i.quantity || 1),
+                // even-backend #333: el id del carrito permite al servidor
+                // recalcular el consumo contra cart_items en vez de cobrar el
+                // total que mandamos. Es opcional en el backend: sin él, cobra
+                // igual que antes.
+                cartItemId: i.cartItemId,
+              })),
+              userDiscountId:
+                accountDiscount?.source === "personal"
+                  ? accountDiscount.id
+                  : undefined,
+              promoRedemptionId:
+                accountDiscount?.source === "promo"
+                  ? accountDiscount.id
+                  : undefined,
+              service: USER_DISCOUNT_SERVICE,
+            });
 
-        const appleOrderId =
-          (orderResult as any).orderId ?? orderResult.data?.orderId;
-        if (!orderResult.success || !appleOrderId) {
+            const id =
+              (orderResult as any).orderId ?? orderResult.data?.orderId;
+            if (!orderResult.success || !id) {
+              rejection = orderResult;
+              return null;
+            }
+            return id;
+          },
+        );
+
+        if (!appleOrderId) {
           console.warn(
             "⚠️ [AP-ORDER] No se pudo crear la orden:",
-            orderResult.error ?? orderResult,
+            rejection?.error ?? rejection,
           );
           // Un 4xx con código semántico es un rechazo definitivo (400
           // baseAmount <= 0, 422 payment_rejected, ...): reintentar con los
           // mismos datos fallaría igual, así que se cae a tarjeta guardada. Un
           // 5xx pasajero no oculta la wallet.
-          if (isDefinitiveWalletRejection(orderResult)) {
+          if (rejection && isDefinitiveWalletRejection(rejection)) {
             setApplePayUnavailable(true);
             setWalletOrderRejected(true);
           }
@@ -452,6 +463,7 @@ export default function CardSelectionPage() {
         applePaySDK.on("success", (event: any) => {
           sessionStorage.removeItem("even-current-order-id");
           sessionStorage.removeItem("even-current-payment-key");
+          clearCachedWalletOrder("apple");
           setApplePayPaymentId(event?.detail?.id || appleOrderId);
           setIsApplePayProcessing(true);
           setCompletedOrderItems([...cartItemsRef.current]);
@@ -475,7 +487,7 @@ export default function CardSelectionPage() {
           buttonStyle: "black",
           buttonType: "pay",
           borderRadius: "8px",
-          supportedNetworks: ["visa", "masterCard", "amex"],
+          supportedNetworks: ["visa", "masterCard"],
         });
 
         if (sdkAlreadyLoaded)
@@ -519,50 +531,74 @@ export default function CardSelectionPage() {
 
     (async () => {
       try {
-        const orderResult = await paymentService.createGooglePayOrder({
-          amount: totalAmount,
-          currency: "MXN",
-          restaurantId: restaurantId,
-          customerName: profileRef.current
-            ? [profileRef.current.firstName, profileRef.current.lastName]
-                .filter(Boolean)
-                .join(" ") || undefined
-            : guestNameRef.current || cartUserNameRef.current || undefined,
-          baseAmount,
-          tipAmount,
-          items: cartState.items.map((i) => ({
-            name: i.name,
-            price: i.price,
-            quantity: i.quantity || 1,
-            extraPrice: (i.extraPrice || 0) * (i.quantity || 1),
-            // even-backend #333: el id del carrito permite al servidor
-            // recalcular el consumo contra cart_items en vez de cobrar el
-            // total que mandamos. Es opcional en el backend: sin él, cobra
-            // igual que antes.
-            cartItemId: i.cartItemId,
-          })),
-          userDiscountId:
-            accountDiscount?.source === "personal"
-              ? accountDiscount.id
-              : undefined,
-          promoRedemptionId:
-            accountDiscount?.source === "promo"
-              ? accountDiscount.id
-              : undefined,
-        });
+        let rejection: any = null;
+        const googleOrderId = await getOrCreateWalletOrderId(
+          "google",
+          {
+            items: cartState.items.map((i) => ({
+              menuItemId: i.id,
+              quantity: i.quantity || 1,
+              extraPrice: i.extraPrice || 0,
+              customFields: i.customFields || null,
+            })),
+            tipAmount,
+            discountId: accountDiscount?.id ?? null,
+            total: totalAmount,
+          },
+          async () => {
+            const orderResult = await paymentService.createGooglePayOrder({
+              amount: totalAmount,
+              currency: "MXN",
+              restaurantId: restaurantId,
+              customerName: profileRef.current
+                ? [profileRef.current.firstName, profileRef.current.lastName]
+                    .filter(Boolean)
+                    .join(" ") || undefined
+                : guestNameRef.current || cartUserNameRef.current || undefined,
+              baseAmount,
+              tipAmount,
+              items: cartState.items.map((i) => ({
+                name: i.name,
+                price: i.price,
+                quantity: i.quantity || 1,
+                extraPrice: (i.extraPrice || 0) * (i.quantity || 1),
+                // even-backend #333: el id del carrito permite al servidor
+                // recalcular el consumo contra cart_items en vez de cobrar el
+                // total que mandamos. Es opcional en el backend: sin él, cobra
+                // igual que antes.
+                cartItemId: i.cartItemId,
+              })),
+              userDiscountId:
+                accountDiscount?.source === "personal"
+                  ? accountDiscount.id
+                  : undefined,
+              promoRedemptionId:
+                accountDiscount?.source === "promo"
+                  ? accountDiscount.id
+                  : undefined,
+              service: USER_DISCOUNT_SERVICE,
+            });
 
-        const googleOrderId =
-          (orderResult as any).orderId ?? orderResult.data?.orderId;
-        if (!orderResult.success || !googleOrderId) {
+            const id =
+              (orderResult as any).orderId ?? orderResult.data?.orderId;
+            if (!orderResult.success || !id) {
+              rejection = orderResult;
+              return null;
+            }
+            return id;
+          },
+        );
+
+        if (!googleOrderId) {
           console.warn(
             "⚠️ [GP-ORDER] No se pudo crear la orden:",
-            orderResult.error ?? orderResult,
+            rejection?.error ?? rejection,
           );
           // Un 4xx con código semántico es un rechazo definitivo (400
           // baseAmount <= 0, 422 payment_rejected, ...): reintentar con los
           // mismos datos fallaría igual, así que se cae a tarjeta guardada. Un
           // 5xx pasajero no oculta la wallet.
-          if (isDefinitiveWalletRejection(orderResult)) {
+          if (rejection && isDefinitiveWalletRejection(rejection)) {
             setGooglePayUnavailable(true);
             setWalletOrderRejected(true);
           }
@@ -611,6 +647,7 @@ export default function CardSelectionPage() {
           stopGooglePay3dsWatch();
           sessionStorage.removeItem("even-current-order-id");
           sessionStorage.removeItem("even-current-payment-key");
+          clearCachedWalletOrder("google");
           setGooglePayToken(token);
           setGooglePayPaymentId(walletPaymentId);
           setIsGooglePayProcessing(true);
@@ -625,11 +662,10 @@ export default function CardSelectionPage() {
           setShowAnimation(true);
         };
 
+        // Se confirma con la orden que creamos (getOrder la verifica), igual
+        // que Pick & Go; activity_id no es un id de orden.
         googlePaySDK.on("success", (event: any) =>
-          handleGooglePaySuccess(
-            event?.detail?.token || null,
-            event?.detail?.activity_id || googleOrderId,
-          ),
+          handleGooglePaySuccess(event?.detail?.token || null, googleOrderId),
         );
 
         // El SDK abre cualquier redirect_url de process-payment en un overlay
@@ -964,7 +1000,14 @@ export default function CardSelectionPage() {
         if (confirmResult.success && confirmResult.data?.order) {
           return { success: true, order: confirmResult.data.order };
         }
-        if (confirmResult.code !== "confirm_in_progress") {
+        // Ya se cobró: red caída, 429 y 5xx se reintentan (confirm es idempotente).
+        const isTransient =
+          confirmResult.code === "confirm_in_progress" ||
+          confirmResult.code === "confirm_conflict" ||
+          confirmResult.status === undefined ||
+          confirmResult.status === 429 ||
+          confirmResult.status >= 500;
+        if (!isTransient) {
           return { success: false };
         }
         await sleep(POLL_INTERVAL_MS);
@@ -1302,14 +1345,6 @@ export default function CardSelectionPage() {
 
   const displayTotal = getDisplayTotal();
   const isUnderMinimum = totalAmount < MINIMUM_AMOUNT;
-  // Propina mostrada en el "Resumen del total": lo que le falta al Subtotal
-  // (ya con su comisión incrustada) para llegar al Total, igual que en
-  // order-confirm y en el recibo. No es el tipAmount real que se cobra; la
-  // comisión nunca se muestra como línea aparte (ver commissionCalculator.ts).
-  const displayPropina = getDisplayTip(
-    displayTotal,
-    displaySubtotal - displayDiscountAmount,
-  );
 
   if (isLoadingInitial || isLoadingProvider) {
     return (
@@ -1461,7 +1496,7 @@ export default function CardSelectionPage() {
                       {tc("subtotal")}
                     </span>
                     <span className="text-black font-medium text-base md:text-lg lg:text-xl">
-                      ${displaySubtotal.toFixed(2)} MXN
+                      ${cartBaseAmount.toFixed(2)} MXN
                     </span>
                   </div>
                   {accountDiscount && orderDiscountAmount > 0 && (
@@ -1470,7 +1505,7 @@ export default function CardSelectionPage() {
                         {tc("discount")} ({accountDiscount.discountPercentage}%)
                       </span>
                       <span className="text-even-evergreen font-medium text-base md:text-lg lg:text-xl">
-                        -${displayDiscountAmount.toFixed(2)} MXN
+                        -${orderDiscountAmount.toFixed(2)} MXN
                       </span>
                     </div>
                   )}
@@ -1765,17 +1800,36 @@ export default function CardSelectionPage() {
                       {t("subtotalBreakdownLabel")}
                     </span>
                     <span className="text-black font-medium text-base md:text-lg">
-                      ${(displaySubtotal - displayDiscountAmount).toFixed(2)}{" "}
-                      MXN
+                      ${baseAmount.toFixed(2)} MXN
                     </span>
                   </div>
-                  {displayPropina > 0 && (
+                  {tipAmount > 0 && (
                     <div className="flex justify-between items-center">
                       <span className="text-black font-medium text-base md:text-lg">
                         {t("tipLabelPrefix")}
                       </span>
                       <span className="text-black font-medium text-base md:text-lg">
-                        ${displayPropina.toFixed(2)} MXN
+                        ${tipAmount.toFixed(2)} MXN
+                      </span>
+                    </div>
+                  )}
+                  {evenClientCharge > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-black font-medium text-base md:text-lg">
+                        {t("serviceCommissionLabel")}
+                      </span>
+                      <span className="text-black font-medium text-base md:text-lg">
+                        ${evenClientCharge.toFixed(2)} MXN
+                      </span>
+                    </div>
+                  )}
+                  {selectedMSI !== null && displayTotal > totalAmount && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-black font-medium text-base md:text-lg">
+                        + Financiamiento ({selectedMSI} meses)
+                      </span>
+                      <span className="text-black font-medium text-base md:text-lg">
+                        ${(displayTotal - totalAmount).toFixed(2)} MXN
                       </span>
                     </div>
                   )}

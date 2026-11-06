@@ -39,9 +39,12 @@ export {
 } from "./ecartpay";
 export {
   calculateCommissions,
+  DEFAULT_COMMISSION_RATES,
   formatMXN,
   getCommissionRates,
+  SERVICE_COMMISSION_RATES,
   type CommissionBreakdown,
   type CommissionRates,
+  type CommissionService,
 } from "./commissions";
 export { CARD_EXPIRY_YEARS_AHEAD, getCardExpiryYears } from "./card-expiry";

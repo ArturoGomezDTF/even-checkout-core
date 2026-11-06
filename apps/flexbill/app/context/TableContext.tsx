@@ -511,9 +511,23 @@ export function TableProvider({ children }: { children: ReactNode }) {
       lastLoadedTable.current = state.tableNumber;
       isLoadingRef.current = true;
 
-      loadTableData().finally(() => {
-        isLoadingRef.current = false;
-      });
+      // Primero jala del POS: si la mesa tiene cuenta allá pero no en Even, el
+      // backend la abre aquí mismo (sin "Traer cuenta" en even-crew).
+      const syncFromPOS =
+        restaurantId && branchNumber
+          ? tableService
+              .syncOrderFromPOS(
+                String(restaurantId),
+                String(branchNumber),
+                state.tableNumber,
+              )
+              .catch(() => {})
+          : Promise.resolve();
+      syncFromPOS
+        .then(() => loadTableData())
+        .finally(() => {
+          isLoadingRef.current = false;
+        });
     }
   }, [state.tableNumber, loadTableData]);
 

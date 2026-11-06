@@ -31,6 +31,10 @@ import {
   clearStoredPaymentIntent,
   updateStoredPaymentIntent,
 } from "@/utils/paymentIdempotency";
+import {
+  getOrCreateWalletOrderId,
+  clearCachedWalletOrder,
+} from "@/utils/walletOrderCache";
 
 const POLL_INTERVAL_MS = 3000;
 const POLL_TIMEOUT_MS = 60000;
@@ -345,41 +349,64 @@ export default function CardSelectionPage() {
 
     (async () => {
       try {
-        const orderResult = await paymentService.createApplePayOrder({
-          amount: totalAmount,
-          currency: "MXN",
-          restaurantId,
-          baseAmount,
-          tipAmount,
-          items: cartState.items.map((i) => ({
-            name: i.name,
-            price: i.price,
-            quantity: i.quantity || 1,
-            extraPrice: (i.extraPrice || 0) * (i.quantity || 1),
-            // even-backend #333: el id del carrito permite al servidor
-            // recalcular el consumo contra cart_items en vez de cobrar el
-            // total que mandamos. Es opcional en el backend: sin él, cobra
-            // igual que antes.
-            cartItemId: i.cartItemId,
-          })),
-          userDiscountId:
-            accountDiscount?.source === "personal"
-              ? accountDiscount.id
-              : undefined,
-          promoRedemptionId:
-            accountDiscount?.source === "promo"
-              ? accountDiscount.id
-              : undefined,
-        });
+        let rejection: any = null;
+        const appleOrderId = await getOrCreateWalletOrderId(
+          "apple",
+          {
+            items: cartState.items.map((i) => ({
+              menuItemId: i.id,
+              quantity: i.quantity || 1,
+              extraPrice: i.extraPrice || 0,
+              customFields: i.customFields || null,
+            })),
+            tipAmount,
+            discountId: accountDiscount?.id ?? null,
+            total: totalAmount,
+          },
+          async () => {
+            const orderResult = await paymentService.createApplePayOrder({
+              amount: totalAmount,
+              currency: "MXN",
+              restaurantId,
+              baseAmount,
+              tipAmount,
+              items: cartState.items.map((i) => ({
+                name: i.name,
+                price: i.price,
+                quantity: i.quantity || 1,
+                extraPrice: (i.extraPrice || 0) * (i.quantity || 1),
+                // even-backend #333: el id del carrito permite al servidor
+                // recalcular el consumo contra cart_items en vez de cobrar el
+                // total que mandamos. Es opcional en el backend: sin él, cobra
+                // igual que antes.
+                cartItemId: i.cartItemId,
+              })),
+              userDiscountId:
+                accountDiscount?.source === "personal"
+                  ? accountDiscount.id
+                  : undefined,
+              promoRedemptionId:
+                accountDiscount?.source === "promo"
+                  ? accountDiscount.id
+                  : undefined,
+            });
 
-        const appleOrderId =
-          (orderResult as any).orderId ?? orderResult.data?.orderId;
-        if (!orderResult.success || !appleOrderId) {
+            const id =
+              (orderResult as any).orderId ?? orderResult.data?.orderId;
+            if (!orderResult.success || !id) {
+              rejection = orderResult;
+              return null;
+            }
+            return id;
+          },
+        );
+
+        if (!appleOrderId) {
           // Un 4xx con código semántico es un rechazo definitivo (400
           // baseAmount <= 0, 422 payment_rejected, ...): reintentar con los
           // mismos datos fallaría igual, así que se cae a tarjeta guardada. Un
           // 5xx pasajero no oculta la wallet.
-          if (isDefinitiveWalletRejection(orderResult)) {
+          if (rejection && isDefinitiveWalletRejection(rejection)) {
             setApplePayUnavailable(true);
             setWalletOrderRejected(true);
           }
@@ -418,6 +445,7 @@ export default function CardSelectionPage() {
           }
         });
         applePaySDK.on("success", (event: any) => {
+          clearCachedWalletOrder("apple");
           const walletPaymentId = event?.detail?.id || appleOrderId;
           setApplePayPaymentId(walletPaymentId);
           setIsApplePayProcessing(true);
@@ -442,7 +470,7 @@ export default function CardSelectionPage() {
           buttonStyle: "black",
           buttonType: "pay",
           borderRadius: "8px",
-          supportedNetworks: ["visa", "masterCard", "amex"],
+          supportedNetworks: ["visa", "masterCard"],
         });
 
         if (sdkAlreadyLoaded)
@@ -470,41 +498,64 @@ export default function CardSelectionPage() {
 
     (async () => {
       try {
-        const orderResult = await paymentService.createGooglePayOrder({
-          amount: totalAmount,
-          currency: "MXN",
-          restaurantId,
-          baseAmount,
-          tipAmount,
-          items: cartState.items.map((i) => ({
-            name: i.name,
-            price: i.price,
-            quantity: i.quantity || 1,
-            extraPrice: (i.extraPrice || 0) * (i.quantity || 1),
-            // even-backend #333: el id del carrito permite al servidor
-            // recalcular el consumo contra cart_items en vez de cobrar el
-            // total que mandamos. Es opcional en el backend: sin él, cobra
-            // igual que antes.
-            cartItemId: i.cartItemId,
-          })),
-          userDiscountId:
-            accountDiscount?.source === "personal"
-              ? accountDiscount.id
-              : undefined,
-          promoRedemptionId:
-            accountDiscount?.source === "promo"
-              ? accountDiscount.id
-              : undefined,
-        });
+        let rejection: any = null;
+        const googleOrderId = await getOrCreateWalletOrderId(
+          "google",
+          {
+            items: cartState.items.map((i) => ({
+              menuItemId: i.id,
+              quantity: i.quantity || 1,
+              extraPrice: i.extraPrice || 0,
+              customFields: i.customFields || null,
+            })),
+            tipAmount,
+            discountId: accountDiscount?.id ?? null,
+            total: totalAmount,
+          },
+          async () => {
+            const orderResult = await paymentService.createGooglePayOrder({
+              amount: totalAmount,
+              currency: "MXN",
+              restaurantId,
+              baseAmount,
+              tipAmount,
+              items: cartState.items.map((i) => ({
+                name: i.name,
+                price: i.price,
+                quantity: i.quantity || 1,
+                extraPrice: (i.extraPrice || 0) * (i.quantity || 1),
+                // even-backend #333: el id del carrito permite al servidor
+                // recalcular el consumo contra cart_items en vez de cobrar el
+                // total que mandamos. Es opcional en el backend: sin él, cobra
+                // igual que antes.
+                cartItemId: i.cartItemId,
+              })),
+              userDiscountId:
+                accountDiscount?.source === "personal"
+                  ? accountDiscount.id
+                  : undefined,
+              promoRedemptionId:
+                accountDiscount?.source === "promo"
+                  ? accountDiscount.id
+                  : undefined,
+            });
 
-        const googleOrderId =
-          (orderResult as any).orderId ?? orderResult.data?.orderId;
-        if (!orderResult.success || !googleOrderId) {
+            const id =
+              (orderResult as any).orderId ?? orderResult.data?.orderId;
+            if (!orderResult.success || !id) {
+              rejection = orderResult;
+              return null;
+            }
+            return id;
+          },
+        );
+
+        if (!googleOrderId) {
           // Un 4xx con código semántico es un rechazo definitivo (400
           // baseAmount <= 0, 422 payment_rejected, ...): reintentar con los
           // mismos datos fallaría igual, así que se cae a tarjeta guardada. Un
           // 5xx pasajero no oculta la wallet.
-          if (isDefinitiveWalletRejection(orderResult)) {
+          if (rejection && isDefinitiveWalletRejection(rejection)) {
             setGooglePayUnavailable(true);
             setWalletOrderRejected(true);
           }
@@ -546,6 +597,7 @@ export default function CardSelectionPage() {
           if (googlePaySucceededRef.current) return;
           googlePaySucceededRef.current = true;
           stopGooglePay3dsWatch();
+          clearCachedWalletOrder("google");
           setGooglePayPaymentId(walletPaymentId);
           setIsGooglePayProcessing(true);
           setCompletedOrderItems([...cartState.items]);

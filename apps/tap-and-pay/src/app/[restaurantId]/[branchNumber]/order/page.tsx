@@ -1,7 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Eye, EyeClosed, Loader, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import {
+  Clock,
+  Eye,
+  EyeClosed,
+  Loader,
+  Loader2,
+  ReceiptText,
+  RefreshCw,
+  WifiOff,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/app/context/AuthContext";
 import { useGuest } from "@/app/context/GuestContext";
@@ -10,7 +19,7 @@ import { useTableNavigation } from "@/app/hooks/useTableNavigation";
 import { useRestaurant } from "@/app/context/RestaurantContext";
 import MenuHeader from "@/app/components/headers/MenuHeader";
 import { useSearchParams, useParams } from "next/navigation";
-import { orderService } from "@/app/services/order.service";
+import { orderService, type POSStatus } from "@/app/services/order.service";
 import ItemCustomizations from "@/app/components/ItemCustomizations";
 
 // Perfil completo = tiene nombre Y fecha de nacimiento (igual que en
@@ -24,6 +33,66 @@ const isProfileComplete = (
   } | null,
 ) => !!p?.firstName && !!p?.birthDate;
 
+type PosIssue = "offline" | "turno_closed" | null;
+
+function EmptyBill({
+  onRefresh,
+  posIssue,
+}: {
+  onRefresh: () => void;
+  posIssue: PosIssue;
+}) {
+  const t = useTranslations("OrderPage");
+  const Icon =
+    posIssue === "offline"
+      ? WifiOff
+      : posIssue === "turno_closed"
+        ? Clock
+        : ReceiptText;
+  const title =
+    posIssue === "offline"
+      ? t("posOfflineTitle")
+      : posIssue === "turno_closed"
+        ? t("turnoClosedTitle")
+        : t("emptyBillTitle");
+
+  return (
+    <div className="flex flex-col items-center text-center pt-12 md:pt-16 pb-8">
+      <div className="relative mb-6">
+        {!posIssue && (
+          <span className="absolute inset-0 rounded-full bg-even-grass/30 animate-ping" />
+        )}
+        <div
+          className={`relative size-20 md:size-24 rounded-full flex items-center justify-center ${
+            posIssue ? "bg-amber-100" : "bg-even-grass/20"
+          }`}
+        >
+          <Icon
+            className={`size-10 md:size-12 ${
+              posIssue ? "text-amber-700" : "text-even-evergreen"
+            }`}
+          />
+        </div>
+      </div>
+      <h3 className="text-2xl md:text-3xl font-medium text-even-evergreen">
+        {title}
+      </h3>
+      {!posIssue && (
+        <p className="mt-2 text-gray-500 text-base md:text-lg">
+          {t("emptyBillMessage")}
+        </p>
+      )}
+      <button
+        onClick={onRefresh}
+        className="mt-8 flex items-center gap-2 bg-even-grass hover:bg-even-grass/80 text-even-evergreen px-6 md:px-8 py-2 md:py-3 rounded-full transition-colors text-base md:text-lg cursor-pointer"
+      >
+        <RefreshCw className="size-4 md:size-5" />
+        {t("refreshCta")}
+      </button>
+    </div>
+  );
+}
+
 export default function OrderPage() {
   const t = useTranslations("OrderPage");
   const tc = useTranslations("Common");
@@ -34,6 +103,7 @@ export default function OrderPage() {
   const { isAuthenticated, isLoading: authLoading, user, profile } = useAuth();
   const { guestId } = useGuest();
   const { restaurant, setParams } = useRestaurant();
+  const showImages = !!restaurant && restaurant.menu_show_images !== false;
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [hasLoadedInitialData, setHasLoadedInitialData] = useState(false);
   const [showPaidOrders, setShowPaidOrders] = useState(false);
@@ -66,6 +136,8 @@ export default function OrderPage() {
       } catch {
         // Sync failed (e.g. no POS agent), still reload local data
       }
+    } else {
+      await checkPOS();
     }
     loadTableData();
   };
@@ -184,13 +256,57 @@ export default function OrderPage() {
     0,
   );
 
-  // Cargar datos cuando se monta el componente
+  const [posStatus, setPosStatus] = useState<POSStatus | null>(null);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
+
+  const checkPOS = useCallback(
+    () =>
+      orderService
+        .getPOSStatus(
+          params?.restaurantId as string,
+          params?.branchNumber as string,
+        )
+        .then(setPosStatus)
+        .catch(() => setPosStatus(null)),
+    [params?.restaurantId, params?.branchNumber],
+  );
+
+  // Carga inicial: orden y estado del POS juntos, para no parpadear entre estados
   useEffect(() => {
     if (state.tableNumber && !hasLoadedInitialData) {
       setHasLoadedInitialData(true);
-      loadTableData();
+      Promise.all([loadTableData(), checkPOS()]).finally(() =>
+        setInitialLoadDone(true),
+      );
     }
   }, [state.tableNumber]);
+
+  // Sin cuenta todavía: revisar en silencio cada 20s mientras la pantalla esté visible
+  const waitingForBill = initialLoadDone && !state.isLoading && !state.order;
+  useEffect(() => {
+    if (!waitingForBill || !state.tableNumber) return;
+    const interval = setInterval(async () => {
+      if (document.visibilityState !== "visible") return;
+      checkPOS();
+      const res = await orderService.getOrOpenActiveOrderByTable(
+        params?.restaurantId as string,
+        params?.branchNumber as string,
+        state.tableNumber!,
+      );
+      if (res.success && res.data) loadTableData();
+    }, 20000);
+    return () => clearInterval(interval);
+  }, [waitingForBill, checkPOS, loadTableData, state.tableNumber, params]);
+
+  // Sólo aplica a POS con agente local (Soft Restaurant)
+  const posIssue: PosIssue =
+    posStatus?.hasIntegration && posStatus.requiresAgent
+      ? !posStatus.isAgentConnected
+        ? "offline"
+        : posStatus.isTurnoOpen === false
+          ? "turno_closed"
+          : null
+      : null;
 
   return (
     <div className="min-h-dvh bg-even-evergreen flex flex-col">
@@ -282,10 +398,15 @@ export default function OrderPage() {
                       </div>
                     </div>
 
-                    {state.isLoading ? (
+                    {!initialLoadDone || state.isLoading ? (
                       <div className="absolute inset-0 flex items-center justify-center">
                         <Loader className="h-8 w-8 md:h-10 md:w-10 lg:h-12 lg:w-12 animate-spin text-even-grass" />
                       </div>
+                    ) : !state.order ? (
+                      <EmptyBill
+                        onRefresh={handleRefresh}
+                        posIssue={posIssue}
+                      />
                     ) : unpaidDishes.length === 0 ? (
                       <div className="flex-1 flex items-center justify-center py-8 md:py-12 text-center">
                         <div>
@@ -305,18 +426,20 @@ export default function OrderPage() {
                             <div key={dish.id} className="py-3 md:py-4 lg:py-5">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3 md:gap-4 lg:gap-5">
-                                  <div className="shrink-0 mt-1">
-                                    <div className="size-16 md:size-20 lg:size-24 bg-gray-300 rounded-sm md:rounded-md flex items-center justify-center hover:scale-105 transition-transform duration-200">
-                                      <img
-                                        src={
-                                          dish.images?.[0] ??
-                                          "/logos/logo-short-green.webp"
-                                        }
-                                        alt={dish.item}
-                                        className="w-full h-full object-cover rounded-sm md:rounded-md"
-                                      />
+                                  {showImages && (
+                                    <div className="shrink-0 mt-1">
+                                      <div className="size-16 md:size-20 lg:size-24 bg-gray-300 rounded-sm md:rounded-md flex items-center justify-center hover:scale-105 transition-transform duration-200">
+                                        <img
+                                          src={
+                                            dish.images?.[0] ??
+                                            "/logos/logo-short-green.webp"
+                                          }
+                                          alt={dish.item}
+                                          className="w-full h-full object-cover rounded-sm md:rounded-md"
+                                        />
+                                      </div>
                                     </div>
-                                  </div>
+                                  )}
                                   <div className="flex-1 min-w-0">
                                     <h4 className="text-base md:text-lg lg:text-xl text-black capitalize">
                                       {dish.item}
@@ -384,18 +507,20 @@ export default function OrderPage() {
                               >
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-3 md:gap-4 lg:gap-5">
-                                    <div className="shrink-0 mt-1">
-                                      <div className="size-16 md:size-20 lg:size-24 bg-gray-300 rounded-sm md:rounded-md flex items-center justify-center hover:scale-105 transition-transform duration-200">
-                                        <img
-                                          src={
-                                            dish.images?.[0] ??
-                                            "/logo-short-green.webp"
-                                          }
-                                          alt={dish.item}
-                                          className="w-full h-full object-cover rounded-sm md:rounded-md"
-                                        />
+                                    {showImages && (
+                                      <div className="shrink-0 mt-1">
+                                        <div className="size-16 md:size-20 lg:size-24 bg-gray-300 rounded-sm md:rounded-md flex items-center justify-center hover:scale-105 transition-transform duration-200">
+                                          <img
+                                            src={
+                                              dish.images?.[0] ??
+                                              "/logo-short-green.webp"
+                                            }
+                                            alt={dish.item}
+                                            className="w-full h-full object-cover rounded-sm md:rounded-md"
+                                          />
+                                        </div>
                                       </div>
-                                    </div>
+                                    )}
                                     <div className="flex-1 min-w-0">
                                       <h4 className="text-base md:text-lg lg:text-xl text-black">
                                         {dish.item}
@@ -437,7 +562,9 @@ export default function OrderPage() {
                                 </span>
                               </div>
                               <p className="text-sm md:text-base lg:text-lg mt-1 text-black">
-                                {t("paidDishesCount", { count: paidTotalItems })}
+                                {t("paidDishesCount", {
+                                  count: paidTotalItems,
+                                })}
                               </p>
                             </div>
                           </div>

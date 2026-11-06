@@ -31,6 +31,7 @@ export default function PaymentSuccessPage() {
   const tc = useTranslations("Common");
   const format = useFormatter();
   const { restaurant, setParams } = useRestaurant();
+  const showImages = !!restaurant && restaurant.menu_show_images !== false;
   const { user, isAuthenticated } = useAuth();
 
   const { state } = useTable();
@@ -613,13 +614,15 @@ export default function PaymentSuccessPage() {
                           className="flex justify-between items-center gap-3 md:gap-4 lg:gap-5"
                         >
                           {/* Image */}
-                          <img
-                            src={
-                              dish.images?.[0] || "/logos/logo-short-green.webp"
-                            }
-                            alt={dish.item}
-                            className="size-14 md:size-16 lg:size-20 object-cover rounded-lg md:rounded-xl shrink-0"
-                          />
+                          {showImages && (
+                            <img
+                              src={
+                                dish.images?.[0] || "/logos/logo-short-green.webp"
+                              }
+                              alt={dish.item}
+                              className="size-14 md:size-16 lg:size-20 object-cover rounded-lg md:rounded-xl shrink-0"
+                            />
+                          )}
                           <div className="flex-1">
                             <p className="text-white font-medium text-base md:text-lg lg:text-xl">
                               {dish.quantity}x {dish.item}

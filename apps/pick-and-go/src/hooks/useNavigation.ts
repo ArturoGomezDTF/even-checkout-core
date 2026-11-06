@@ -85,6 +85,16 @@ export function useNavigation() {
     [navigateWithRestaurantId]
   );
 
+  // Prefetch de la ruta del platillo para que la navegación sea inmediata
+  const prefetchDish = useCallback(
+    (dishId: string | number) => {
+      if (!currentRestaurantId) return;
+      const query = currentBranchNumber ? `?branch=${currentBranchNumber}` : "";
+      router.prefetch(`/${currentRestaurantId}/dish/${dishId}${query}`);
+    },
+    [router, currentRestaurantId, currentBranchNumber]
+  );
+
   /**
    * Navegar hacia atrás con contexto
    * Si no hay restaurantId, usa router.back()
@@ -183,6 +193,7 @@ export function useNavigation() {
 
     // Navegación específica para Pick & Go
     navigateToDish,
+    prefetchDish,
     navigateToCart,
     navigateToMenu,
     navigateToOrderConfirmation,

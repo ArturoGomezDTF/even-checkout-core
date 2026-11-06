@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import {
   MenuItem as MenuItemDB,
   MenuItemData,
@@ -13,6 +14,7 @@ import { useRestaurant } from "@/app/context/RestaurantContext";
 import { Plus, Minus } from "lucide-react";
 import { useRef, useState, useEffect, useMemo, memo } from "react";
 import OutOfStockModal from "@/app/components/OutOfStockModal";
+import { rememberMenuPosition } from "../utils/menuScrollMemory";
 import { getItemDisplayPrice } from "@/app/utils/commissionCalculator";
 import { usePersonalItemDiscounts } from "@/app/hooks/usePersonalItemDiscounts";
 
@@ -50,9 +52,11 @@ function MenuItem({ item, onRestaurantClosed }: MenuItemProps) {
   }, [item]);
 
   const { state, addItem, decrementItem } = useCart();
-  const { navigateWithTable } = useTableNavigation();
+  const { navigateWithTable, getUrlWithTable } = useTableNavigation();
+  const router = useRouter();
   const { flyToCart } = useFlyToCart();
-  const { isOpen, restaurantId } = useRestaurant();
+  const { isOpen, restaurant, restaurantId } = useRestaurant();
+  const showImages = !!restaurant && restaurant.menu_show_images !== false;
   const personalDiscounts = usePersonalItemDiscounts(restaurantId);
   const personalDiscount = personalDiscounts.get(adaptedItem.id);
   // Si el producto también tiene descuento de admin-portal, gana
@@ -86,9 +90,28 @@ function MenuItem({ item, onRestaurantClosed }: MenuItemProps) {
     return false;
   }, [item]);
 
-  const handleImageClick = () => {
+  // Prefetch al entrar en pantalla (como <Link>) para que /dish abra con su loading al instante
+  const cardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      router.prefetch(getUrlWithTable(`/dish/${adaptedItem.id}`));
+      observer.disconnect();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [adaptedItem.id, router, getUrlWithTable, showImages]);
+
+  const openDish = () => {
+    if (cardRef.current) {
+      rememberMenuPosition(String(restaurantId), String(adaptedItem.id), cardRef.current);
+    }
     navigateWithTable(`/dish/${adaptedItem.id}`);
   };
+
+  const handleImageClick = openDish;
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -128,11 +151,11 @@ function MenuItem({ item, onRestaurantClosed }: MenuItemProps) {
           }
         } catch (error) {
           console.error("Error parsing last item:", error);
-          navigateWithTable(`/dish/${adaptedItem.id}`);
+          openDish();
         }
       } else {
         setIsPulsing(true);
-        navigateWithTable(`/dish/${adaptedItem.id}`);
+        openDish();
       }
       return;
     }
@@ -187,6 +210,7 @@ function MenuItem({ item, onRestaurantClosed }: MenuItemProps) {
 
     isRemovingRef.current = true;
     setLocalQuantity((prev) => Math.max(0, prev - 1));
+    setIsPulsing(true);
 
     try {
       await decrementItem(adaptedItem.id);
@@ -201,6 +225,89 @@ function MenuItem({ item, onRestaurantClosed }: MenuItemProps) {
 
   const displayQuantity = Math.max(localQuantity, currentQuantity);
 
+  if (!showImages) {
+    const finalPrice = adaptedItem.price * (1 - effectiveDiscount / 100);
+    return (
+      <>
+        <OutOfStockModal
+          isOpen={showOutOfStockModal}
+          onClose={() => setShowOutOfStockModal(false)}
+          itemName={adaptedItem.name}
+        />
+        <div
+          ref={cardRef}
+          data-menu-item-id={adaptedItem.id}
+          className="border-b border-gray-300 py-3 md:py-4 cursor-pointer"
+          onClick={handleImageClick}
+        >
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline justify-between gap-3">
+                <h3 className="text-base md:text-lg lg:text-xl font-medium text-black leading-tight capitalize line-clamp-1 wrap-break-word">
+                  {adaptedItem.name}
+                </h3>
+                <div className="shrink-0 whitespace-nowrap">
+                  {effectiveDiscount > 0 && (
+                    <span className="text-xs md:text-sm text-black/40 line-through mr-1.5">
+                      ${adaptedItem.price.toFixed(2)}
+                    </span>
+                  )}
+                  <span className="text-base md:text-lg lg:text-xl font-medium text-black">
+                    ${finalPrice.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+              {(adaptedItem.description ||
+                effectiveDiscount > 0 ||
+                isOutOfStock) && (
+                <div className="flex items-center gap-2 mt-0.5 md:mt-1">
+                  <p className="flex-1 min-w-0 text-sm md:text-base text-black/50 line-clamp-1">
+                    {adaptedItem.description}
+                  </p>
+                  {effectiveDiscount > 0 && (
+                    <span className="shrink-0 bg-red-600 text-white text-[11px] md:text-xs font-bold px-2 py-0.5 tracking-wide">
+                      {effectiveDiscount}% OFF
+                    </span>
+                  )}
+                  {isOutOfStock && (
+                    <span className="shrink-0 bg-red-600 text-white text-[11px] md:text-xs font-bold px-2 py-0.5 tracking-wide">
+                      {tc("outOfStockBadge")}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+            <div
+              className={`flex shrink-0 items-center h-8 md:h-9 rounded-full border border-stroke/50 text-black transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${displayQuantity > 0 ? "px-3 md:px-4" : "px-2"} ${isPulsing ? "bg-even-grass/50 scale-110" : "bg-surface scale-100"}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                className={`flex items-center overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${displayQuantity > 0 ? "max-w-20 opacity-100 mr-1.5 md:mr-2" : "max-w-0 opacity-0 mr-0"}`}
+              >
+                <Minus
+                  className={`size-4 md:size-5 shrink-0 transition-transform duration-300 ${displayQuantity > 0 ? "cursor-pointer rotate-0" : "-rotate-90"}`}
+                  onClick={displayQuantity > 0 ? handleRemoveFromCart : undefined}
+                />
+                <p
+                  key={displayQuantity}
+                  className="ml-1.5 md:ml-2 font-normal text-base md:text-lg min-w-[1ch] text-center animate-qty-pop"
+                >
+                  {displayQuantity || 1}
+                </p>
+              </div>
+              <div ref={plusButtonRef}>
+                <Plus
+                  className={`size-4 md:size-5 transition-transform duration-300 ${displayQuantity > 0 ? "rotate-0" : "rotate-90"} ${isOutOfStock ? "opacity-30 cursor-not-allowed" : "cursor-pointer"}`}
+                  onClick={handleAddToCart}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <OutOfStockModal
@@ -209,6 +316,8 @@ function MenuItem({ item, onRestaurantClosed }: MenuItemProps) {
         itemName={adaptedItem.name}
       />
       <div
+        ref={cardRef}
+        data-menu-item-id={adaptedItem.id}
         className="border-b border-gray-300 py-4 md:py-6 lg:py-7 relative"
         onClick={handleImageClick}
       >
@@ -287,7 +396,7 @@ function MenuItem({ item, onRestaurantClosed }: MenuItemProps) {
                 ))}
               </div>
             )}
-            <p className="text-base md:text-lg lg:text-xl line-clamp-3 leading-4 md:leading-5 lg:leading-6 bg-linear-to-b from-black to-black/30 bg-clip-text mt-1.5 md:mt-2.5">
+            <p className="text-base md:text-lg lg:text-xl line-clamp-3 leading-4 md:leading-5 lg:leading-6 text-black/70 mt-1.5 md:mt-2.5">
               {adaptedItem.description}
             </p>
             <div className="flex items-center justify-between mt-2 md:mt-3">

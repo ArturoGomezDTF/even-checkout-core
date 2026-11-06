@@ -1,19 +1,27 @@
 import {
-  calculateCommissions,
+  calculateCommissions as calculateServiceCommissions,
   formatMXN,
-  getCommissionRates,
+  getCommissionRates as getServiceCommissionRates,
   type CommissionBreakdown,
   type CommissionRates,
 } from "@even/payments";
 
-// Núcleo compartido en @even/payments; se re-exporta para no tocar a los callers.
-export {
-  calculateCommissions,
-  formatMXN,
-  getCommissionRates,
-  type CommissionBreakdown,
-  type CommissionRates,
-};
+// Reparto de comisión de Tap Order & Pay: 4% restaurante, el cliente no paga comisión.
+// Tabla completa y reglas en docs/comisiones.md. El backend es la autoridad.
+export const COMMISSION_SERVICE = "tap-order-and-pay" as const;
+
+export { formatMXN, type CommissionBreakdown, type CommissionRates };
+
+export function getCommissionRates(amount: number): CommissionRates {
+  return getServiceCommissionRates(amount, COMMISSION_SERVICE);
+}
+
+export function calculateCommissions(
+  baseAmount: number,
+  tipAmount: number,
+): CommissionBreakdown {
+  return calculateServiceCommissions(baseAmount, tipAmount, COMMISSION_SERVICE);
+}
 
 // ============================================================
 // CONVENCIÓN DE COMISIÓN POR SERVICIO (léelo antes de tocar montos en pantalla)
@@ -69,7 +77,8 @@ export interface ItemCommissionRate {
 export function getItemCommissionRate(
   _unitPrice: number,
 ): ItemCommissionRate {
-  return { clientPays: 2.0, restaurantPays: 2.0 };
+  const { clientPays, restaurantPays } = getCommissionRates(0);
+  return { clientPays, restaurantPays };
 }
 
 // Precio que ve el cliente: precio real + comisión del cliente + IVA sobre

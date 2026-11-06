@@ -10,6 +10,7 @@ import { useValidateAccess } from "@/hooks/useValidateAccess";
 import ValidationError from "@/components/ValidationError";
 import { authService } from "@/services/auth.service";
 import { useAuth } from "@/context/AuthContext";
+import TermsCheckbox from "@/components/TermsCheckbox";
 
 type Step = "phone" | "verify" | "profile";
 
@@ -71,6 +72,7 @@ export default function AuthSelectionPage() {
   const [newFirstName, setNewFirstName] = useState("");
   const [newLastName, setNewLastName] = useState("");
   const [newAge, setNewAge] = useState<number | "">("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const formatPhoneNumber = (num: string) => {
     if (!num) return "";
@@ -254,7 +256,7 @@ export default function AuthSelectionPage() {
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newAge === "") return;
+    if (newAge === "" || !acceptedTerms) return;
     setLoading(true);
     setError("");
     try {
@@ -263,6 +265,7 @@ export default function AuthSelectionPage() {
         firstName: newFirstName,
         lastName: newLastName,
         birthDate: `${birthYear}-01-01`,
+        acceptedTerms: true,
       });
       if (response.success) {
         await refreshProfile();
@@ -463,9 +466,15 @@ export default function AuthSelectionPage() {
                   ))}
                 </select>
               </div>
+              <TermsCheckbox
+                checked={acceptedTerms}
+                onChange={setAcceptedTerms}
+                disabled={loading}
+              />
+
               <button
                 type="submit"
-                disabled={loading || !newFirstName || newAge === ""}
+                disabled={loading || !newFirstName || newAge === "" || !acceptedTerms}
                 className="w-full bg-even-grass text-even-evergreen hover:opacity-90 py-3 rounded-full font-medium transition-opacity disabled:bg-even-grass/30 disabled:text-even-evergreen/40 disabled:cursor-not-allowed mt-6"
               >
                 {loading ? t("saving") : t("continueCta")}

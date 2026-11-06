@@ -107,6 +107,8 @@
     "productsSelected": "{count, plural, one {# producto seleccionado} other {# productos seleccionados}}",
     "customizeExtras": "Personalizar productos adicionales",
     "selectUpTo": "Selecciona hasta {max}",
+    "selectExactly": "Selecciona {count}",
+    "selectBetween": "Selecciona de {min} a {max}",
     "optionUnavailable": "Agotado",
     "notesPlaceholder": "Alergias, instrucciones especiales, comentarios...",
     "addToCartCta": "Agregar • ${amount} MXN",
@@ -126,10 +128,10 @@
   "Auth": {
     "phoneStepTitle": "Ingresa tu número",
     "verifyStepTitle": "Verifica tu código",
-    "profileStepTitle": "Completa tu perfil",
+    "profileStepTitle": "Registra tu perfil",
     "phoneStepSubtitle": "Te enviaremos un código de verificación",
     "verifyStepSubtitlePrefix": "Enviamos un código al",
-    "profileStepSubtitle": "Cuéntanos un poco más sobre ti",
+    "profileStepSubtitle": "Solo lo tendrás que hacer una vez",
     "phonePlaceholder": "Número de teléfono",
     "firstNamePlaceholder": "Nombre",
     "lastNamePlaceholder": "Apellido",
@@ -309,13 +311,6 @@
     "workingAriaLabel": "Pepper trabajando",
     "approvedAriaLabel": "Pepper aprobado"
   },
-  "EqualSplitSelectionModal": {
-    "title": "¿Entre quiénes se divide?",
-    "subtitle": "Desmarca a quien no entre en la división",
-    "defaultGuestName": "Comensal",
-    "confirmingCta": "Confirmando...",
-    "splitBetweenCta": "{count, plural, one {Dividir entre # persona} other {Dividir entre # personas}}"
-  },
   "OrderStatus": {
     "subtitle": "Revisa tu cuenta y elige como pagar",
     "tableClosedTitle": "¡Mesa Cerrada!",
@@ -370,7 +365,7 @@
     "totalLabel": "Total:",
     "yourShareLabel": "Tu parte:",
     "yourAmountLabel": "Tu monto:",
-    "splitBetweenLabel": "{count, plural, one {Dividido entre # persona} other {Dividido entre # personas}}: {names}",
+    "howManyPeopleLabel": "¿Entre cuántas personas se divide lo que falta?",
     "tipLabel": "Propina",
     "underMinimumWarning": "¡No has completado el mínimo de compra!",
     "totalToPay": "Total a pagar",
@@ -381,12 +376,13 @@
     "consumptionLabel": "Consumo",
     "itemsLabel": "Tus artículos",
     "tipLabelPrefix": "+ Propina",
-    "namesJoiner": " y "
-  },
-  "GuestNamePage": {
-    "title": "¿Cómo te llamas?",
-    "nameLabel": "Tu nombre",
-    "namePlaceholder": "Nombre",
+    "splitTitle": "Divide lo que falta",
+    "yourShareTitle": "Tu parte",
+    "ofAmount": "de ${amount}",
+    "peopleUnit": "personas",
+    "fewerPeople": "Una persona menos",
+    "morePeople": "Una persona más",
+    "includesTip": "incluye ${amount} propina",
     "continueCta": "Continuar"
   },
   "OrderAnimation": {
@@ -453,7 +449,12 @@
   },
   "RestaurantClosedModal": {
     "title": "El restaurante está cerrado",
-    "message": "Lo sentimos, el restaurante {name} está cerrado en este momento."
+    "message": "Lo sentimos, el restaurante {name} está cerrado en este momento.",
+    "notYetTitle": "Aún no abrimos",
+    "notYetMessage": "Podrás pedir a partir de {when}.",
+    "whenToday": "hoy a las {time}",
+    "whenTomorrow": "mañana a las {time}",
+    "whenDay": "el {day} a las {time}"
   },
   "PromoActivationBanner": {
     "errorClaimGeneric": "Error al reclamar"
@@ -547,5 +548,12 @@
     "heroTitle": "Bienvenido",
     "heroSubtitle": "Ordena directamente desde tu mesa y <highlight>disfruta sin esperas</highlight>.",
     "heroFootnote": "Escanea el código QR o toca la tarjeta en tu mesa para acceder al menú digital."
+  },
+  "Terms": {
+    "checkbox": "He leído y acepto los <terms>Términos y Condiciones</terms> y el <privacy>Aviso de Privacidad</privacy>.",
+    "updateTitle": "Actualizamos nuestros términos",
+    "updateBody": "Actualizamos nuestros Términos y Condiciones y Aviso de Privacidad.",
+    "updateCta": "Entendido",
+    "errorSave": "No pudimos guardar tu aceptación. Intenta de nuevo."
   }
 }

@@ -9,6 +9,8 @@ import { useGuest } from "@/context/GuestContext";
 import { useTableNavigation } from "@/hooks/useTableNavigation";
 import { useRestaurant } from "@/context/RestaurantContext";
 import MenuHeaderBack from "@/components/headers/MenuHeaderBack";
+import TermsCheckbox from "@/components/TermsCheckbox";
+import { registerGuestWithTerms } from "@/services/guestRegistration.service";
 import { Loader2 } from "lucide-react";
 
 export default function UserPage() {
@@ -28,12 +30,15 @@ export default function UserPage() {
   }, [restaurantId, branchNumber, setRestaurantId, setBranchNumber]);
 
   const [userName, setUserName] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsError, setTermsError] = useState("");
+  const tTerms = useTranslations("Terms");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderedItems, setOrderedItems] = useState<CartItem[]>([]);
   const [orderUserName, setOrderUserName] = useState("");
   const { dispatch } = useTable();
   const { state: cartState, setUserName: setCartUserName } = useCart();
-  const { setGuestName } = useGuest();
+  const { guestId, setGuestName } = useGuest();
   const { tableNumber, navigateWithTable } = useTableNavigation();
   const router = useRouter();
 
@@ -60,16 +65,27 @@ export default function UserPage() {
 
   // Manejar presión de Enter/Intro
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && userName.trim() && !isSubmitting) {
+    if (e.key === "Enter" && userName.trim() && acceptedTerms && !isSubmitting) {
       e.preventDefault();
       handleProceedToOrder();
     }
   };
 
   const handleProceedToOrder = async () => {
-    if (userName.trim()) {
+    if (userName.trim() && acceptedTerms) {
       setIsSubmitting(true);
+      setTermsError("");
       try {
+        const saved = await registerGuestWithTerms({
+          guestId,
+          name: userName.trim(),
+          restaurantId,
+          branchNumber,
+        });
+        if (!saved) {
+          setTermsError(tTerms("errorSave"));
+          return;
+        }
         // Guardar items antes de que se limpie el carrito
         setOrderedItems([...cartState.items]);
         setOrderUserName(userName.trim());
@@ -134,6 +150,20 @@ export default function UserPage() {
                   className="w-full px-6 md:px-8 lg:px-10 py-3 md:py-4 lg:py-5 bg-gray-100/90 backdrop-blur-xl rounded-[9999px]! text-black text-xl md:text-2xl lg:text-3xl text-center font-normal placeholder:text-gray-400 focus:outline-none border border-white/80 shadow-[0_2px_8px_rgba(0,0,0,0.06),inset_0_1px_6px_rgba(255,255,255,0.8)] focus:shadow-[0_2px_8px_rgba(0,0,0,0.04),inset_0_0_0_1.2px_rgba(130,230,87,0.7)] transition-shadow"
                 />
               </div>
+
+              <div className="w-full mt-6">
+                <TermsCheckbox
+                  checked={acceptedTerms}
+                  onChange={setAcceptedTerms}
+                  disabled={isSubmitting}
+                  variant="light"
+                />
+                {termsError && (
+                  <p className="mt-3 text-sm text-red-600 text-center">
+                    {termsError}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -144,9 +174,9 @@ export default function UserPage() {
         <div className="mx-4 md:mx-6 lg:mx-8 w-full max-w-full px-4 md:px-6 lg:px-8">
           <button
             onClick={handleProceedToOrder}
-            disabled={!userName.trim()}
+            disabled={!userName.trim() || !acceptedTerms || isSubmitting}
             className={`w-full py-3 md:py-4 lg:py-5 rounded-full transition-all active:scale-90 text-even-evergreen cursor-pointer text-base md:text-lg lg:text-xl ${
-              userName.trim() && !isSubmitting
+              userName.trim() && acceptedTerms && !isSubmitting
                 ? "bg-even-grass"
                 : "bg-even-grass opacity-50 cursor-not-allowed"
             }`}

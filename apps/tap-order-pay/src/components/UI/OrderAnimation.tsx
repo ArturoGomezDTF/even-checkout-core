@@ -8,7 +8,6 @@ import { useRestaurant } from "../../context/RestaurantContext";
 import { useTableNavigation } from "@/hooks/useTableNavigation";
 import Loader from "@/components/UI/Loader";
 import { useAuth } from "@/context/AuthContext";
-import { getItemDisplayPrice } from "@/utils/commissionCalculator";
 
 interface OrderAnimationProps {
   userName?: string;
@@ -40,6 +39,7 @@ const OrderAnimation = ({
   const { navigateWithTable } = useTableNavigation();
   const { state } = useTable();
   const { restaurant, loading } = useRestaurant();
+  const showImages = !!restaurant && restaurant.menu_show_images !== false;
   const { profile } = useAuth();
 
   // Siempre apunta a la versión más reciente del callback para evitar
@@ -313,21 +313,23 @@ const OrderAnimation = ({
                           key={`${item.id}-${index}`}
                           className="flex items-center gap-3 md:gap-4"
                         >
-                          <div className="size-10 md:size-12 lg:size-14 bg-gray-300 rounded-sm md:rounded-md flex items-center justify-center overflow-hidden shrink-0">
-                            {item.images && item.images[0] ? (
-                              <img
-                                src={item.images[0]}
-                                alt={item.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <img
-                                src="/even/even-asterisk-evergreen.svg"
-                                alt="Logo Even"
-                                className="size-6 md:size-7 lg:size-8 object-contain"
-                              />
-                            )}
-                          </div>
+                          {showImages && (
+                            <div className="size-10 md:size-12 lg:size-14 bg-gray-300 rounded-sm md:rounded-md flex items-center justify-center overflow-hidden shrink-0">
+                              {item.images && item.images[0] ? (
+                                <img
+                                  src={item.images[0]}
+                                  alt={item.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <img
+                                  src="/even/even-asterisk-evergreen.svg"
+                                  alt="Logo Even"
+                                  className="size-6 md:size-7 lg:size-8 object-contain"
+                                />
+                              )}
+                            </div>
+                          )}
                           <div className="flex-1">
                             <p className="text-black text-sm md:text-base lg:text-lg capitalize">
                               {item.name}
@@ -340,9 +342,8 @@ const OrderAnimation = ({
                             <p className="text-black text-sm md:text-base lg:text-lg font-medium">
                               $
                               {(
-                                getItemDisplayPrice(
-                                  item.price + (item.extraPrice || 0),
-                                ) * item.quantity
+                                (item.price + (item.extraPrice || 0)) *
+                                item.quantity
                               ).toFixed(2)}
                             </p>
                           </div>

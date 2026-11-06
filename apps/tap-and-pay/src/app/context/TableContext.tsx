@@ -159,7 +159,7 @@ export function TableProvider({ children }: { children: ReactNode }) {
       return;
 
     try {
-      const response = await orderService.getActiveOrderByTable(
+      const response = await orderService.getOrOpenActiveOrderByTable(
         params.restaurantId,
         params.branchNumber,
         state.tableNumber,
@@ -199,8 +199,8 @@ export function TableProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      // Primero cargar la orden
-      const orderResponse = await orderService.getActiveOrderByTable(
+      // Primero cargar la orden (si no hay, se trae del POS)
+      const orderResponse = await orderService.getOrOpenActiveOrderByTable(
         params.restaurantId,
         params.branchNumber,
         state.tableNumber,
@@ -437,9 +437,7 @@ export function TableProvider({ children }: { children: ReactNode }) {
         if (response.success) {
           await refreshAll();
         } else {
-          throw new Error(
-            response.error?.message || "Error al pagar el monto",
-          );
+          throw new Error(response.error?.message || "Error al pagar el monto");
         }
       } catch (error) {
         setState((prev) => ({

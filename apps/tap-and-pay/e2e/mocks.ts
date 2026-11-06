@@ -87,6 +87,17 @@ export async function mockTapAndPayApi(
     ["GET", /^\/tap-pay\/orders\/[^/]+\/split-status$/, { success: true, data: { is_split_active: false } }],
     ["GET", /^\/tap-pay\/orders\/[^/]+\/items$/, { success: true, data: order?.items ?? [] }],
     ["POST", /^\/payments\/(apple|google)-pay\/order$/, wallet],
+    // Sin POS integrado: la mesa no trae cuenta desde el POS y el estado lo refleja.
+    [
+      "GET",
+      /^\/pos\/restaurant\/\d+\/branch\/\d+\/agent-status$/,
+      { success: true, hasIntegration: false, requiresAgent: false, isAgentConnected: false, isTurnoOpen: null },
+    ],
+    [
+      "POST",
+      /^\/tap-pay\/restaurants\/\d+\/branches\/\d+\/tables\/[^/]+\/open-from-pos$/,
+      { status: 404, body: { success: false, error: "La mesa no tiene cuenta abierta en el POS" } },
+    ],
   ];
 
   // El layout carga el SDK de EcartPay; un stub vacío basta para el humo.

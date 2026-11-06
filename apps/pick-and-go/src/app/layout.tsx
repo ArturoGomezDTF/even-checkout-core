@@ -14,6 +14,7 @@ import { UserDataProvider } from "@/context/userDataContext";
 import { PaymentProvider } from "@/context/PaymentContext";
 import { PepperProvider } from "@/context/PepperContext";
 import AuthCartSync from "@/components/AuthCartSync";
+import TermsUpdateToast from "@/components/TermsUpdateToast";
 import Script from "next/script";
 
 const dmMono = DM_Mono({
@@ -72,6 +73,7 @@ export default async function RootLayout({
         />
         <NextIntlClientProvider locale={locale} messages={messages}>
           <AuthProvider>
+            <TermsUpdateToast />
             <GuestProvider>
               <BranchProvider>
                 <RestaurantProvider>

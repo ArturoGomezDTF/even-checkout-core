@@ -6,6 +6,7 @@ import Flag from "react-world-flags";
 import { useTranslations } from "next-intl";
 import { authService } from "@/services/auth.service";
 import { useAuth } from "@/context/AuthContext";
+import TermsCheckbox from "@/components/TermsCheckbox";
 import { useModalBackClose } from "@/hooks/useModalBackClose";
 import LanguageToggleButton from "@/components/UI/LanguageToggleButton";
 
@@ -75,6 +76,7 @@ export default function AuthView({ onClose }: AuthViewProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [age, setAge] = useState<number | "">("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   // Envío del SMS en curso: el paso de código se muestra de inmediato
   const [sendingCode, setSendingCode] = useState(false);
@@ -194,7 +196,7 @@ export default function AuthView({ onClose }: AuthViewProps) {
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (age === "") return;
+    if (age === "" || !acceptedTerms) return;
     setError("");
     setLoading(true);
     try {
@@ -203,6 +205,7 @@ export default function AuthView({ onClose }: AuthViewProps) {
         firstName,
         lastName,
         birthDate: `${birthYear}-01-01`,
+        acceptedTerms: true,
       });
       if (response.success) {
         await refreshProfile();
@@ -483,9 +486,16 @@ export default function AuthView({ onClose }: AuthViewProps) {
                   ))}
                 </select>
               </div>
+              <TermsCheckbox
+                checked={acceptedTerms}
+                onChange={setAcceptedTerms}
+                disabled={loading}
+                variant="light"
+              />
+
               <button
                 type="submit"
-                disabled={loading || !firstName || age === ""}
+                disabled={loading || !firstName || age === "" || !acceptedTerms}
                 className="w-full bg-even-grass text-even-evergreen hover:opacity-90 py-3 rounded-full transition-opacity disabled:bg-even-grass/30 disabled:text-even-evergreen/40 disabled:cursor-not-allowed mt-6"
               >
                 {loading ? t("saving") : t("continueCta")}

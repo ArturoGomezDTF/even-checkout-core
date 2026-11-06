@@ -38,6 +38,7 @@ export default function PaymentSuccessPage() {
   const format = useFormatter();
   const params = useParams();
   const { setRestaurantId, setBranchNumber, restaurant } = useRestaurant();
+  const showImages = !!restaurant && restaurant.menu_show_images !== false;
   const restaurantId = params?.restaurantId as string;
   const branchNumber = params?.branchNumber as string;
   const { state } = useRoom();
@@ -663,7 +664,7 @@ export default function PaymentSuccessPage() {
                           key={`${dish.dish_order_id || "dish"}-${index}-${dish.item}`}
                           className="flex justify-between items-center gap-3 md:gap-4 lg:gap-5"
                         >
-                          {dish.images &&
+                          {showImages && dish.images &&
                             dish.images.length > 0 &&
                             dish.images[0] && (
                               <img
@@ -838,25 +839,27 @@ export default function PaymentSuccessPage() {
                       key={dish.id || index}
                       className="flex items-start gap-3 md:gap-4 lg:gap-5 bg-white/5 rounded-xl md:rounded-2xl p-3 md:p-4 lg:p-5 border border-white/10"
                     >
-                      <div className="shrink-0">
-                        <div className="size-16 md:size-20 lg:size-24 bg-gray-300 rounded-sm flex items-center justify-center overflow-hidden">
-                          {dish.images &&
-                          dish.images.length > 0 &&
-                          dish.images[0] ? (
-                            <img
-                              src={dish.images[0]}
-                              alt={dish.item}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <img
-                              src={"/even/even-asterisk-evergreen.svg"}
-                              alt="Logo Even"
-                              className="size-12 md:size-14 lg:size-16 object-contain"
-                            />
-                          )}
+                      {showImages && (
+                        <div className="shrink-0">
+                          <div className="size-16 md:size-20 lg:size-24 bg-gray-300 rounded-sm flex items-center justify-center overflow-hidden">
+                            {dish.images &&
+                            dish.images.length > 0 &&
+                            dish.images[0] ? (
+                              <img
+                                src={dish.images[0]}
+                                alt={dish.item}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <img
+                                src={"/even/even-asterisk-evergreen.svg"}
+                                alt="Logo Even"
+                                className="size-12 md:size-14 lg:size-16 object-contain"
+                              />
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <h3 className="text-base md:text-lg lg:text-xl text-white font-medium capitalize">
                           {dish.item}

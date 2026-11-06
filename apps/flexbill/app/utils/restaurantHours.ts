@@ -118,3 +118,19 @@ export function getNextOpeningTime(
 
   return "Actualmente cerrado";
 }
+
+// Partes para "Podrás pedir a partir de …" (menú de la siguiente ventana).
+export function getOrderableFromParts(
+  iso: string,
+  locale: string,
+): { kind: "today" | "tomorrow" | "day"; time: string; day: string } {
+  const at = new Date(iso);
+  const now = new Date();
+  const startOf = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((startOf(at) - startOf(now)) / 86400000);
+  const time = `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
+  const day = at.toLocaleDateString(locale, { weekday: "long" });
+  const kind = days <= 0 ? "today" : days === 1 ? "tomorrow" : "day";
+  return { kind, time, day };
+}

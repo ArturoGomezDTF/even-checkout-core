@@ -1,5 +1,7 @@
 "use client";
 
+import { IVA_FACTOR, IVA_RATE } from "@/app/constants/fiscal";
+import { calculateCommissions } from "@/app/utils/commissionCalculator";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useTable } from "@/app/context/TableContext";
@@ -31,6 +33,10 @@ import {
   clearStoredPaymentIntent,
   updateStoredPaymentIntent,
 } from "@/app/utils/paymentIdempotency";
+import {
+  getOrCreateWalletOrderId,
+  clearCachedWalletOrder,
+} from "@/app/utils/walletOrderCache";
 
 import { Plus, Trash2, Loader2, CircleAlert, X } from "lucide-react";
 import { getCardTypeIcon } from "@/app/utils/cardIcons";
@@ -155,39 +161,24 @@ export default function CardSelectionPage() {
   const totalAmountCharged = parseFloat(searchParams.get("amount") || "0"); // Total cobrado al cliente
   const baseAmount = parseFloat(searchParams.get("baseAmount") || "0"); // Monto base (consumo)
   const tipAmount = parseFloat(searchParams.get("tipAmount") || "0"); // Propina
-  const ivaTip = parseFloat(searchParams.get("ivaTip") || "0"); // IVA propina (no pagado por cliente)
-  const evenCommissionClient = parseFloat(
-    searchParams.get("evenCommissionClient") || "0",
-  );
-  const ivaEvenClient = parseFloat(searchParams.get("ivaEvenClient") || "0");
-  const evenCommissionRestaurant = parseFloat(
-    searchParams.get("evenCommissionRestaurant") || "0",
-  );
-  const evenCommissionTotal = parseFloat(
-    searchParams.get("evenCommissionTotal") || "0",
-  );
-  const ecartCommissionTotal = parseFloat(
-    searchParams.get("ecartCommissionTotal") || "0",
-  );
+  // La comisión se deriva de consumo + propina; el backend la recalcula por
+  // ítem (computeFlexBillAmountDue), así que esto solo es el respaldo.
+  const {
+    ivaTip,
+    evenCommissionClient,
+    ivaEvenClient,
+    evenCommissionRestaurant,
+    evenCommissionTotal,
+  } = calculateCommissions(baseAmount, tipAmount);
   const userName = searchParams.get("userName");
   const selectedItemsParam = searchParams.get("selectedItems");
 
-  // Calcular valores faltantes
   const evenClientCharge = evenCommissionClient + ivaEvenClient;
-
-  // Lo que se muestra en pantalla: Subtotal fijo (no se mueve con la
-  // propina) y Propina como residuo — ya calculados en tip-selection (ver
-  // commissionCalculator.ts resolveTipAmountForTargetDisplay). Fallback al
-  // cálculo viejo por si el link no trae estos params (caso raro).
-  const displaySubtotal = searchParams.get("displaySubtotal")
-    ? parseFloat(searchParams.get("displaySubtotal") || "0")
-    : baseAmount + evenClientCharge;
-  const displayPropina = searchParams.get("displayPropina")
-    ? parseFloat(searchParams.get("displayPropina") || "0")
-    : tipAmount;
+  const displaySubtotal = baseAmount + evenClientCharge;
+  const displayPropina = tipAmount;
 
   // IVA sobre la comisión del restaurante (16% de evenCommissionRestaurant)
-  const ivaEvenRestaurant = evenCommissionRestaurant * 0.16;
+  const ivaEvenRestaurant = evenCommissionRestaurant * IVA_RATE;
 
   // Cargo total al restaurante (comisión + IVA)
   const evenRestaurantCharge = evenCommissionRestaurant + ivaEvenRestaurant;
@@ -854,43 +845,70 @@ export default function CardSelectionPage() {
                   extraPrice: 0,
                 },
               ];
-        const orderResult = await paymentService.createApplePayOrder({
-          amount: totalAmountCharged,
-          currency: "MXN",
-          tableNumber: undefined,
-          restaurantId: restaurantId?.toString(),
-          baseAmount,
-          tipAmount,
-          items: applePayItems,
-          // Flex Bill: recalcula server-side con el modelo de comisión
-          // por-ítem correcto, en vez de calculateCommissions.
-          id_table_order:
-            dishOrders.length > 0 ? dishOrders[0].table_order_id : null,
-          payment_type: paymentType,
-          selected_item_ids:
-            paymentType === "select-items"
-              ? selectedItems
-              : paymentType === "user-items" && userName
-                ? dishOrders
-                    .filter(
-                      (d) =>
-                        (d.payment_status === "not_paid" ||
-                          !d.payment_status) &&
-                        d.guest_name === userName,
-                    )
-                    .map((d) => d.dish_order_id?.toString())
-                : undefined,
-        });
 
-        const appleOrderId =
-          (orderResult as any).orderId ?? orderResult.data?.orderId;
-        if (!orderResult.success || !appleOrderId) {
-          console.warn("⚠️ Apple Pay: no se pudo crear la orden", orderResult);
+        let rejection: any = null;
+        const appleOrderId = await getOrCreateWalletOrderId(
+          "apple",
+          {
+            items: applePayItems.map((i) => ({
+              menuItemId: i.name,
+              quantity: i.quantity,
+              extraPrice: i.extraPrice || 0,
+              customFields: null,
+            })),
+            tipAmount,
+            discountId: null,
+            total: totalAmountCharged,
+          },
+          async () => {
+            const orderResult = await paymentService.createApplePayOrder({
+              amount: totalAmountCharged,
+              currency: "MXN",
+              tableNumber: undefined,
+              restaurantId: restaurantId?.toString(),
+              baseAmount,
+              tipAmount,
+              items: applePayItems,
+              // Flex Bill: recalcula server-side con el modelo de comisión
+              // por-ítem correcto, en vez de calculateCommissions.
+              id_table_order:
+                dishOrders.length > 0 ? dishOrders[0].table_order_id : null,
+              payment_type: paymentType,
+              selected_item_ids:
+                paymentType === "select-items"
+                  ? selectedItems
+                  : paymentType === "user-items" && userName
+                    ? dishOrders
+                        .filter(
+                          (d) =>
+                            (d.payment_status === "not_paid" ||
+                              !d.payment_status) &&
+                            d.guest_name === userName,
+                        )
+                        .map((d) => d.dish_order_id?.toString())
+                    : undefined,
+            });
+
+            const id =
+              (orderResult as any).orderId ?? orderResult.data?.orderId;
+            if (!orderResult.success || !id) {
+              rejection = orderResult;
+              console.warn(
+                "⚠️ Apple Pay: no se pudo crear la orden",
+                orderResult,
+              );
+              return null;
+            }
+            return id;
+          },
+        );
+
+        if (!appleOrderId) {
           // Un 4xx con código semántico es un rechazo definitivo (400
           // baseAmount <= 0, 422 payment_rejected, ...): reintentar con los
           // mismos datos fallaría igual, así que se cae a tarjeta guardada. Un
           // 5xx pasajero no oculta la wallet.
-          if (isDefinitiveWalletRejection(orderResult)) {
+          if (rejection && isDefinitiveWalletRejection(rejection)) {
             setApplePayUnavailable(true);
             setWalletOrderRejected(true);
           }
@@ -939,6 +957,7 @@ export default function CardSelectionPage() {
           }
         });
         applePaySDK.on("success", async () => {
+          clearCachedWalletOrder("apple");
           const mockPaymentId = `apple-pay-${Date.now()}`;
           setIsApplePayProcessing(true);
           setPaymentStatus("processing");
@@ -1002,40 +1021,70 @@ export default function CardSelectionPage() {
                   extraPrice: 0,
                 },
               ];
-        const orderResult = await paymentService.createGooglePayOrder({
-          amount: totalAmountCharged,
-          currency: "MXN",
-          tableNumber: undefined,
-          restaurantId: restaurantId?.toString(),
-          baseAmount,
-          tipAmount,
-          items: googlePayItems,
-          // Flex Bill: recalcula server-side con el modelo de comisión
-          // por-ítem correcto, en vez de calculateCommissions.
-          id_table_order:
-            dishOrders.length > 0 ? dishOrders[0].table_order_id : null,
-          payment_type: paymentType,
-          selected_item_ids:
-            paymentType === "select-items"
-              ? selectedItems
-              : paymentType === "user-items" && userName
-                ? dishOrders
-                    .filter(
-                      (d) =>
-                        (d.payment_status === "not_paid" ||
-                          !d.payment_status) &&
-                        d.guest_name === userName,
-                    )
-                    .map((d) => d.dish_order_id?.toString())
-                : undefined,
-        });
 
-        const googleOrderId =
-          (orderResult as any).orderId ?? orderResult.data?.orderId;
-        if (!orderResult.success || !googleOrderId) {
-          console.warn("⚠️ Google Pay: no se pudo crear la orden", orderResult);
-          // Ver Apple Pay: solo un 4xx definitivo oculta la wallet.
-          if (isDefinitiveWalletRejection(orderResult)) {
+        let rejection: any = null;
+        const googleOrderId = await getOrCreateWalletOrderId(
+          "google",
+          {
+            items: googlePayItems.map((i) => ({
+              menuItemId: i.name,
+              quantity: i.quantity,
+              extraPrice: i.extraPrice || 0,
+              customFields: null,
+            })),
+            tipAmount,
+            discountId: null,
+            total: totalAmountCharged,
+          },
+          async () => {
+            const orderResult = await paymentService.createGooglePayOrder({
+              amount: totalAmountCharged,
+              currency: "MXN",
+              tableNumber: undefined,
+              restaurantId: restaurantId?.toString(),
+              baseAmount,
+              tipAmount,
+              items: googlePayItems,
+              // Flex Bill: recalcula server-side con el modelo de comisión
+              // por-ítem correcto, en vez de calculateCommissions.
+              id_table_order:
+                dishOrders.length > 0 ? dishOrders[0].table_order_id : null,
+              payment_type: paymentType,
+              selected_item_ids:
+                paymentType === "select-items"
+                  ? selectedItems
+                  : paymentType === "user-items" && userName
+                    ? dishOrders
+                        .filter(
+                          (d) =>
+                            (d.payment_status === "not_paid" ||
+                              !d.payment_status) &&
+                            d.guest_name === userName,
+                        )
+                        .map((d) => d.dish_order_id?.toString())
+                    : undefined,
+            });
+
+            const id =
+              (orderResult as any).orderId ?? orderResult.data?.orderId;
+            if (!orderResult.success || !id) {
+              rejection = orderResult;
+              console.warn(
+                "⚠️ Google Pay: no se pudo crear la orden",
+                orderResult,
+              );
+              return null;
+            }
+            return id;
+          },
+        );
+
+        if (!googleOrderId) {
+          // Un 4xx con código semántico es un rechazo definitivo (400
+          // baseAmount <= 0, 422 payment_rejected, ...): reintentar con los
+          // mismos datos fallaría igual, así que se cae a tarjeta guardada. Un
+          // 5xx pasajero no oculta la wallet.
+          if (rejection && isDefinitiveWalletRejection(rejection)) {
             setGooglePayUnavailable(true);
             setWalletOrderRejected(true);
           }
@@ -1088,6 +1137,7 @@ export default function CardSelectionPage() {
           if (googlePaySucceededRef.current) return;
           googlePaySucceededRef.current = true;
           stopGooglePay3dsWatch();
+          clearCachedWalletOrder("google");
           setGooglePayPaymentId(paymentId);
           setIsGooglePayProcessing(true);
           setPaymentStatus("processing");
@@ -1304,23 +1354,7 @@ export default function CardSelectionPage() {
         setIsProcessing(false);
         setPaymentStatus(null);
 
-        const queryParams = new URLSearchParams({
-          amount: totalAmountCharged.toString(), // Total cobrado al cliente
-          baseAmount: baseAmount.toString(), // Monto base (consumo)
-          tipAmount: tipAmount.toString(),
-          displaySubtotal: displaySubtotal.toString(),
-          displayPropina: displayPropina.toString(),
-          ivaTip: ivaTip.toString(),
-          evenCommissionClient: evenCommissionClient.toString(),
-          ivaEvenClient: ivaEvenClient.toString(),
-          evenCommissionRestaurant: evenCommissionRestaurant.toString(),
-          evenRestaurantCharge: evenRestaurantCharge.toString(),
-          evenCommissionTotal: evenCommissionTotal.toString(),
-          type: paymentType,
-          ...(userName && { userName }),
-        });
-
-        navigateWithTable(`/add-card?${queryParams.toString()}`);
+        navigateWithTable("/add-card");
         return;
       }
 
@@ -1612,25 +1646,9 @@ export default function CardSelectionPage() {
     }
   };
 
+  // add-card regresa con router.back(), así que no necesita los montos.
   const handleAddCard = (): void => {
-    const queryParams = new URLSearchParams({
-      amount: totalAmountCharged.toString(), // Total cobrado al cliente
-      baseAmount: baseAmount.toString(), // Monto base (consumo)
-      tipAmount: tipAmount.toString(),
-      displaySubtotal: displaySubtotal.toString(),
-      displayPropina: displayPropina.toString(),
-      ivaTip: ivaTip.toString(),
-      evenCommissionClient: evenCommissionClient.toString(),
-      ivaEvenClient: ivaEvenClient.toString(),
-      evenCommissionRestaurant: evenCommissionRestaurant.toString(),
-      evenRestaurantCharge: evenRestaurantCharge.toString(),
-      evenCommissionTotal: evenCommissionTotal.toString(),
-      type: paymentType,
-      scan: "false", // Auto-abrir scanner
-      ...(userName && { userName }),
-    });
-
-    navigateWithTable(`/add-card?${queryParams.toString()}`);
+    navigateWithTable("/add-card");
   };
 
   const handleDeleteCard = async (paymentMethodId: string) => {
@@ -1667,7 +1685,7 @@ export default function CardSelectionPage() {
     if (!selectedOption) return totalAmountCharged;
 
     // Cálculo EcartPay: markup sobre monto final
-    return totalAmountCharged / (1 - (selectedOption.rate / 100) * 1.16);
+    return totalAmountCharged / (1 - (selectedOption.rate / 100) * IVA_FACTOR);
   };
 
   const displayTotal = getDisplayTotal();
@@ -1694,13 +1712,8 @@ export default function CardSelectionPage() {
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="bg-white rounded-t-4xl flex-1 flex flex-col px-8 overflow-hidden z-10">
               <div className="flex-1 overflow-y-auto py-8 pb-[120px] flex flex-col gap-4">
-                {/* Subtotal row */}
-                <div className="flex justify-between items-center">
-                  <div className="h-4 w-20 bg-gray-200 rounded-full animate-pulse" />
-                  <div className="h-4 w-24 bg-gray-200 rounded-full animate-pulse" />
-                </div>
                 {/* Total row */}
-                <div className="flex justify-between items-center border-t pt-3">
+                <div className="flex justify-between items-center">
                   <div className="h-5 w-28 bg-gray-200 rounded-full animate-pulse" />
                   <div className="h-5 w-28 bg-gray-200 rounded-full animate-pulse" />
                 </div>
@@ -1774,20 +1787,7 @@ export default function CardSelectionPage() {
               <div className="flex-1 overflow-y-auto py-8 pb-[120px]">
                 {/* Payment Summary */}
                 <div className="space-y-2 mb-6">
-                  {/* Resumen compacto del pedido */}
-                  <div className="mb-3 space-y-2">
-                    <div className="flex justify-between items-center text-base font-medium text-black">
-                      <span>{t("subtotalLabel")}</span>
-                      <span>${displaySubtotal.toFixed(2)} MXN</span>
-                    </div>
-                    {displayPropina > 0 && (
-                      <div className="flex justify-between items-center text-base font-medium text-black">
-                        <span>{t("tipLabel")}</span>
-                        <span>${displayPropina.toFixed(2)} MXN</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex justify-between items-center border-t pt-2">
+                  <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-black text-base md:text-lg lg:text-xl">
                         {t("totalToPay")}
@@ -2222,7 +2222,7 @@ export default function CardSelectionPage() {
                               // Cálculo EcartPay: markup sobre monto final
                               const totalWithCommission =
                                 totalAmountCharged /
-                                (1 - (option.rate / 100) * 1.16);
+                                (1 - (option.rate / 100) * IVA_FACTOR);
                               const monthlyPayment =
                                 totalWithCommission / option.months;
 

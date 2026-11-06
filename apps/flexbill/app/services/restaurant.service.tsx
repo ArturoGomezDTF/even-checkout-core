@@ -13,6 +13,7 @@ interface ApiResponse<T> {
 interface RestaurantWithMenu {
   restaurant: Restaurant;
   menu: MenuSection[];
+  orderable_from?: string | null;
 }
 
 export interface Branch {

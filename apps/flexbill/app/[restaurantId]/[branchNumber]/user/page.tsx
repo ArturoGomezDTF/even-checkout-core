@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useState, useRef, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useCart, CartItem } from "@/app/context/CartContext";
 import { useTable } from "@/app/context/TableContext";
 import { useGuest } from "@/app/context/GuestContext";
@@ -12,6 +12,8 @@ import MenuHeaderBack from "@/app/components/headers/MenuHeaderBack";
 import OrderAnimation from "@/app/components/UI/OrderAnimation";
 import { useValidateAccess } from "@/app/hooks/useValidateAccess";
 import ValidationError from "@/app/components/ValidationError";
+import TermsCheckbox from "@/app/components/TermsCheckbox";
+import { registerGuestWithTerms } from "@/app/services/guestRegistration.service";
 
 export default function UserPage() {
   const t = useTranslations("UserPage");
@@ -20,8 +22,12 @@ export default function UserPage() {
   // nombre para agregar a alguien a la cuenta sin pasar por el flujo de carrito.
   const joinOnly = searchParams?.get("joinOnly") === "true";
 
-  const { guestName: existingGuestName, setGuestName } = useGuest();
+  const params = useParams();
+  const tTerms = useTranslations("Terms");
+  const { guestId, guestName: existingGuestName, setGuestName } = useGuest();
   const [userName, setUserName] = useState(existingGuestName || "");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsError, setTermsError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showOrderAnimation, setShowOrderAnimation] = useState(false);
   const [orderedItems, setOrderedItems] = useState<CartItem[]>([]);
@@ -62,7 +68,7 @@ export default function UserPage() {
 
   // Manejar presión de Enter/Intro
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && userName.trim() && !isSubmitting) {
+    if (e.key === "Enter" && userName.trim() && acceptedTerms && !isSubmitting) {
       e.preventDefault();
       // Cerrar el teclado
       if (inputRef.current) {
@@ -99,7 +105,21 @@ export default function UserPage() {
   };
 
   const handleProceedToOrder = async () => {
-    if (!userName.trim()) return;
+    if (!userName.trim() || !acceptedTerms) return;
+
+    setIsSubmitting(true);
+    setTermsError("");
+    const saved = await registerGuestWithTerms({
+      guestId,
+      name: userName.trim(),
+      restaurantId: params?.restaurantId as string,
+      branchNumber,
+    });
+    if (!saved) {
+      setTermsError(tTerms("errorSave"));
+      setIsSubmitting(false);
+      return;
+    }
 
     if (joinOnly) {
       await handleJoinOnly();
@@ -219,6 +239,20 @@ export default function UserPage() {
                   className="w-full px-6 md:px-8 lg:px-10 py-3 md:py-4 lg:py-5 bg-surface rounded-full text-black text-xl md:text-2xl lg:text-3xl text-center font-normal placeholder:text-gray-400 focus:outline-none border border-stroke-soft focus:border-even-grass transition-colors"
                 />
               </div>
+
+              <div className="w-full mt-6">
+                <TermsCheckbox
+                  checked={acceptedTerms}
+                  onChange={setAcceptedTerms}
+                  disabled={isSubmitting}
+                  variant="light"
+                />
+                {termsError && (
+                  <p className="mt-3 text-sm text-red-600 text-center">
+                    {termsError}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -229,9 +263,9 @@ export default function UserPage() {
         <div className="mx-4 md:mx-6 lg:mx-8 w-full max-w-full px-4 md:px-6 lg:px-8">
           <button
             onClick={handleProceedToOrder}
-            disabled={!userName.trim() || isSubmitting}
+            disabled={!userName.trim() || !acceptedTerms || isSubmitting}
             className={`w-full py-3 md:py-4 lg:py-5 rounded-full transition-colors text-even-evergreen font-medium cursor-pointer text-base md:text-lg lg:text-xl bg-even-grass ${
-              userName.trim() && !isSubmitting
+              userName.trim() && acceptedTerms && !isSubmitting
                 ? ""
                 : "opacity-50 cursor-not-allowed"
             }`}

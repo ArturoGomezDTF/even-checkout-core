@@ -5,6 +5,8 @@ export interface Restaurant {
   primary_color?: string;
   secondary_color?: string;
   billing_enabled?: boolean;
+  // Override por sucursal (/complete); false = menú sin fotos de platillos
+  menu_show_images?: boolean;
 }
 
 export interface Branch {

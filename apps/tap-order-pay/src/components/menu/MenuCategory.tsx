@@ -1,6 +1,7 @@
 import { useTranslations } from "next-intl";
 import MenuItem from "./MenuItem";
 import { MenuSection } from "../../interfaces/category";
+import { useRestaurant } from "../../context/RestaurantContext";
 
 interface MenuCategoryProps {
   section: MenuSection;
@@ -14,13 +15,21 @@ export default function MenuCategory({
   onRestaurantClosed,
 }: MenuCategoryProps) {
   const t = useTranslations("MenuCategory");
+  const { restaurant } = useRestaurant();
+  const showImages = !!restaurant && restaurant.menu_show_images !== false;
   return (
     <section
       className="w-full mb-4 md:mb-5"
       style={{ contentVisibility: "auto", containIntrinsicSize: "0 400px" }}
     >
       {showSectionName && section.name && (
-        <h2 className="text-black text-xl md:text-2xl lg:text-3xl font-medium">
+        <h2
+          className={
+            showImages
+              ? "text-black text-xl md:text-2xl lg:text-3xl font-medium"
+              : "mt-6 md:mt-8 pb-2 md:pb-3 border-b-2 border-even-evergreen text-even-evergreen text-xl md:text-2xl font-bold uppercase tracking-wide"
+          }
+        >
           {section.name}
         </h2>
       )}

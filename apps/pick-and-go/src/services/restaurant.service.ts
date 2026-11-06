@@ -5,6 +5,7 @@ import { requestWithAuth, type ApiResponse } from "./request-helper";
 interface RestaurantWithMenu {
   restaurant: Restaurant;
   menu: MenuSection[];
+  orderable_from?: string | null;
 }
 
 export interface ValidationResult {
