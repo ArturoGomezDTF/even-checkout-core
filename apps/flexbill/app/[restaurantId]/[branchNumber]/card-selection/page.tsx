@@ -846,6 +846,63 @@ export default function CardSelectionPage() {
                 },
               ];
 
+        let rejection: any = null;
+        const appleOrderId = await getOrCreateWalletOrderId(
+          "apple",
+          {
+            items: applePayItems.map((i) => ({
+              menuItemId: i.name,
+              quantity: i.quantity,
+              extraPrice: i.extraPrice || 0,
+              customFields: null,
+            })),
+            tipAmount,
+            discountId: null,
+            total: totalAmountCharged,
+          },
+          async () => {
+            const orderResult = await paymentService.createApplePayOrder({
+              amount: totalAmountCharged,
+              currency: "MXN",
+              tableNumber: undefined,
+              restaurantId: restaurantId?.toString(),
+              baseAmount,
+              tipAmount,
+              items: applePayItems,
+              // Flex Bill: recalcula server-side con el modelo de comisión
+              // por-ítem correcto, en vez de calculateCommissions.
+              id_table_order:
+                dishOrders.length > 0 ? dishOrders[0].table_order_id : null,
+              payment_type: paymentType,
+              selected_item_ids:
+                paymentType === "select-items"
+                  ? selectedItems
+                  : paymentType === "user-items" && userName
+                    ? dishOrders
+                        .filter(
+                          (d) =>
+                            (d.payment_status === "not_paid" ||
+                              !d.payment_status) &&
+                            d.guest_name === userName,
+                        )
+                        .map((d) => d.dish_order_id?.toString())
+                    : undefined,
+            });
+
+            const id =
+              (orderResult as any).orderId ?? orderResult.data?.orderId;
+            if (!orderResult.success || !id) {
+              rejection = orderResult;
+              console.warn(
+                "⚠️ Apple Pay: no se pudo crear la orden",
+                orderResult,
+              );
+              return null;
+            }
+            return id;
+          },
+        );
+
         if (!appleOrderId) {
           // Un 4xx con código semántico es un rechazo definitivo (400
           // baseAmount <= 0, 422 payment_rejected, ...): reintentar con los
@@ -964,6 +1021,63 @@ export default function CardSelectionPage() {
                   extraPrice: 0,
                 },
               ];
+
+        let rejection: any = null;
+        const googleOrderId = await getOrCreateWalletOrderId(
+          "google",
+          {
+            items: googlePayItems.map((i) => ({
+              menuItemId: i.name,
+              quantity: i.quantity,
+              extraPrice: i.extraPrice || 0,
+              customFields: null,
+            })),
+            tipAmount,
+            discountId: null,
+            total: totalAmountCharged,
+          },
+          async () => {
+            const orderResult = await paymentService.createGooglePayOrder({
+              amount: totalAmountCharged,
+              currency: "MXN",
+              tableNumber: undefined,
+              restaurantId: restaurantId?.toString(),
+              baseAmount,
+              tipAmount,
+              items: googlePayItems,
+              // Flex Bill: recalcula server-side con el modelo de comisión
+              // por-ítem correcto, en vez de calculateCommissions.
+              id_table_order:
+                dishOrders.length > 0 ? dishOrders[0].table_order_id : null,
+              payment_type: paymentType,
+              selected_item_ids:
+                paymentType === "select-items"
+                  ? selectedItems
+                  : paymentType === "user-items" && userName
+                    ? dishOrders
+                        .filter(
+                          (d) =>
+                            (d.payment_status === "not_paid" ||
+                              !d.payment_status) &&
+                            d.guest_name === userName,
+                        )
+                        .map((d) => d.dish_order_id?.toString())
+                    : undefined,
+            });
+
+            const id =
+              (orderResult as any).orderId ?? orderResult.data?.orderId;
+            if (!orderResult.success || !id) {
+              rejection = orderResult;
+              console.warn(
+                "⚠️ Google Pay: no se pudo crear la orden",
+                orderResult,
+              );
+              return null;
+            }
+            return id;
+          },
+        );
 
         if (!googleOrderId) {
           // Un 4xx con código semántico es un rechazo definitivo (400

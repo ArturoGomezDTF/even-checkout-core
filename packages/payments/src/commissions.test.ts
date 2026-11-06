@@ -3,6 +3,7 @@ import {
   calculateCommissions,
   formatMXN,
   getCommissionRates,
+  SERVICE_COMMISSION_RATES,
 } from "./commissions";
 
 describe("getCommissionRates", () => {
@@ -53,5 +54,56 @@ describe("formatMXN", () => {
   it("formatea con dos decimales y sufijo MXN", () => {
     expect(formatMXN(5)).toBe("$5.00 MXN");
     expect(formatMXN(1234.567)).toBe("$1234.57 MXN");
+  });
+});
+
+describe("tarifa por servicio", () => {
+  const SOLO_RESTAURANTE = { evenTotal: 4, clientPays: 0, restaurantPays: 4 };
+  const DIVIDIDA = { evenTotal: 4, clientPays: 2, restaurantPays: 2 };
+
+  it.each(["pick-and-go", "room-service"])(
+    "%s: 2%% restaurante + 2%% cliente",
+    (service) => {
+      expect(getCommissionRates(100, service)).toEqual(DIVIDIDA);
+    },
+  );
+
+  it.each(["tap-order-and-pay", "flex-bill", "tap-and-pay"])(
+    "%s: 4%% restaurante y el cliente no paga comisión",
+    (service) => {
+      expect(getCommissionRates(100, service)).toEqual(SOLO_RESTAURANTE);
+    },
+  );
+
+  it("acepta los mismos alias que el backend", () => {
+    expect(getCommissionRates(1, "tap-order-pay")).toEqual(SOLO_RESTAURANTE);
+    expect(getCommissionRates(1, "flexbill")).toEqual(SOLO_RESTAURANTE);
+    expect(getCommissionRates(1, "tap_pay")).toEqual(SOLO_RESTAURANTE);
+    expect(getCommissionRates(1, " FLEX_BILL ")).toEqual(SOLO_RESTAURANTE);
+  });
+
+  it("sin servicio o con uno desconocido usa 2% / 2%", () => {
+    expect(getCommissionRates(1)).toEqual(DIVIDIDA);
+    expect(getCommissionRates(1, null)).toEqual(DIVIDIDA);
+    expect(getCommissionRates(1, "otro")).toEqual(DIVIDIDA);
+  });
+
+  it("devuelve una copia: mutarla no altera la tabla", () => {
+    getCommissionRates(1, "flex-bill").clientPays = 99;
+    expect(SERVICE_COMMISSION_RATES["flex-bill"]?.clientPays).toBe(0);
+  });
+
+  it("con 0% cliente el total cobrado es consumo + propina", () => {
+    const b = calculateCommissions(100, 10, "tap-and-pay");
+    expect(b.evenClientCharge).toBe(0);
+    expect(b.totalAmountCharged).toBe(110);
+    // El restaurante paga 4% + IVA sobre base + propina: 110 * 4% * 1.16
+    expect(b.evenRestaurantCharge).toBe(5.1);
+  });
+
+  it("con 2/2 el cliente paga su parte más IVA", () => {
+    const b = calculateCommissions(100, 10, "pick-and-go");
+    expect(b.evenClientCharge).toBe(2.55);
+    expect(b.totalAmountCharged).toBe(112.55);
   });
 });

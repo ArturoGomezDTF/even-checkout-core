@@ -544,7 +544,7 @@ export default function CardSelectionPage() {
           // baseAmount <= 0, 422 payment_rejected, ...): reintentar con los
           // mismos datos fallaría igual, así que se cae a tarjeta guardada. Un
           // 5xx pasajero no oculta la wallet.
-          if (isDefinitiveWalletRejection(orderResult)) {
+          if (rejection && isDefinitiveWalletRejection(rejection)) {
             setApplePayUnavailable(true);
             setWalletOrderRejected(true);
           }
@@ -709,7 +709,7 @@ export default function CardSelectionPage() {
           // baseAmount <= 0, 422 payment_rejected, ...): reintentar con los
           // mismos datos fallaría igual, así que se cae a tarjeta guardada. Un
           // 5xx pasajero no oculta la wallet.
-          if (isDefinitiveWalletRejection(orderResult)) {
+          if (rejection && isDefinitiveWalletRejection(rejection)) {
             setGooglePayUnavailable(true);
             setWalletOrderRejected(true);
           }

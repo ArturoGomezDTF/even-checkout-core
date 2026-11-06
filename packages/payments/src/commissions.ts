@@ -37,17 +37,76 @@ export interface CommissionBreakdown {
   rates: CommissionRates;
 }
 
+/** Identificadores de servicio (mismos que `service` en even-backend). */
+export type CommissionService =
+  | "pick-and-go"
+  | "room-service"
+  | "tap-order-and-pay"
+  | "tap-and-pay"
+  | "flex-bill";
+
+/** Tarifa por defecto: Even 4% = 2% cliente + 2% restaurante. */
+export const DEFAULT_COMMISSION_RATES: CommissionRates = {
+  evenTotal: 4.0,
+  clientPays: 2.0,
+  restaurantPays: 2.0,
+};
+
+/** El restaurante paga el 4% completo; el cliente no ve ninguna comisión. */
+const SOLO_RESTAURANTE: CommissionRates = {
+  evenTotal: 4.0,
+  clientPays: 0,
+  restaurantPays: 4.0,
+};
+
 /**
- * Tarifa plana: Even 4.0% (Cliente 2.0%, Restaurante 2.0%) para cualquier
- * monto, en todos los servicios.
+ * Reparto por servicio. Un servicio que no está aquí (Pick & Go, Room Service)
+ * usa DEFAULT_COMMISSION_RATES. Espejo de SERVICE_COMMISSION_RATES en
+ * even-backend/src/utils/commissionCalculator.js; ver docs/comisiones.md.
  */
-export function getCommissionRates(_amount: number): CommissionRates {
-  return { evenTotal: 4.0, clientPays: 2.0, restaurantPays: 2.0 };
+export const SERVICE_COMMISSION_RATES: Partial<
+  Record<CommissionService, CommissionRates>
+> = {
+  "tap-order-and-pay": SOLO_RESTAURANTE,
+  "flex-bill": SOLO_RESTAURANTE,
+  "tap-and-pay": SOLO_RESTAURANTE,
+};
+
+// Alias que acepta el backend para el mismo servicio.
+const SERVICE_ALIASES: Record<string, CommissionService> = {
+  "tap-order-pay": "tap-order-and-pay",
+  tap_order_and_pay: "tap-order-and-pay",
+  flexbill: "flex-bill",
+  flex_bill: "flex-bill",
+  "tap-pay": "tap-and-pay",
+  tap_and_pay: "tap-and-pay",
+  tap_pay: "tap-and-pay",
+};
+
+function normalizeService(service?: string | null): string | null {
+  if (typeof service !== "string") return null;
+  const s = service.trim().toLowerCase();
+  return SERVICE_ALIASES[s] ?? (s || null);
+}
+
+/**
+ * Tarifa plana Even 4% para cualquier monto. El reparto cliente/restaurante
+ * depende del servicio (2/2 por defecto; 0/4 en Tap Order & Pay, FlexBill y
+ * Tap & Pay). `_amount` se conserva por compatibilidad con los callers.
+ */
+export function getCommissionRates(
+  _amount: number,
+  service?: string | null,
+): CommissionRates {
+  const key = normalizeService(service) as CommissionService | null;
+  const rates = (key && SERVICE_COMMISSION_RATES[key]) || DEFAULT_COMMISSION_RATES;
+  return { ...rates };
 }
 
 export function calculateCommissions(
   baseAmount: number,
   tipAmount: number,
+  service?: string | null,
 ): CommissionBreakdown {
   // IVA de propina (NO pagado por cliente)
   const ivaTip = tipAmount * 0.16;
@@ -56,7 +115,7 @@ export function calculateCommissions(
   const subtotalForCommission = baseAmount + tipAmount;
 
   // Obtener tasas según el monto
-  const rates = getCommissionRates(subtotalForCommission);
+  const rates = getCommissionRates(subtotalForCommission, service);
 
   // Comisiones Even (sin IVA)
   const evenCommissionTotal = subtotalForCommission * (rates.evenTotal / 100);

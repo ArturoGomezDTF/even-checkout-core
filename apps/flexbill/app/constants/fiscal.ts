@@ -14,7 +14,4 @@ export const IVA_FACTOR = 1 + IVA_RATE;
 // base sobre la cual calcular la tasa combinada.
 export const DEFAULT_RESTAURANT_RATE = 0.04;
 
-// Tarifa plana en porcentaje: en FlexBill el cliente no paga comisión y el
-// restaurante paga el 4% completo de Even (SERVICE_COMMISSION_RATES["flex-bill"]).
-export const CLIENT_COMMISSION_PERCENT = 0;
-export const RESTAURANT_COMMISSION_PERCENT = 4.0;
+// El reparto cliente/restaurante vive en @even/payments (SERVICE_COMMISSION_RATES).

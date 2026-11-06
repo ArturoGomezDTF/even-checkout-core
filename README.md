@@ -73,6 +73,10 @@ test("muestra el error del backend", async ({ page, paymentsApi }) => {
 });
 ```
 
+## Comisiones
+
+El reparto de la comisión Even (4 %) depende del servicio; ver [docs/comisiones.md](docs/comisiones.md).
+
 ## Despliegue en Vercel
 
 Cada app es un proyecto de Vercel distinto apuntando a este repo, con **Root Directory** en `apps/<app>`.
