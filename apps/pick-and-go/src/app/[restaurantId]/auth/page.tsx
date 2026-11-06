@@ -9,6 +9,7 @@ import { authService } from "@/services/auth.service";
 import { useRestaurant } from "@/context/RestaurantContext";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigation } from "@/hooks/useNavigation";
+import TermsCheckbox from "@/components/TermsCheckbox";
 
 type Step = "phone" | "verify" | "profile";
 
@@ -50,6 +51,7 @@ export default function AuthPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [age, setAge] = useState<number | "">("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   // Envío del SMS en curso: el paso de código se muestra de inmediato
   const [sendingCode, setSendingCode] = useState(false);
@@ -307,7 +309,7 @@ export default function AuthPage() {
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (age === "") return;
+    if (age === "" || !acceptedTerms) return;
     setError("");
     setLoading(true);
 
@@ -317,6 +319,7 @@ export default function AuthPage() {
         firstName,
         lastName,
         birthDate: `${birthYear}-01-01`,
+        acceptedTerms: true,
       });
 
       if (response.success) {
@@ -609,10 +612,16 @@ export default function AuthPage() {
               </select>
             </div>
 
+            <TermsCheckbox
+              checked={acceptedTerms}
+              onChange={setAcceptedTerms}
+              disabled={loading}
+            />
+
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading || !firstName || age === ""}
+              disabled={loading || !firstName || age === "" || !acceptedTerms}
               className="w-full bg-even-grass text-even-evergreen hover:opacity-90 py-3 rounded-full font-medium transition-opacity disabled:bg-even-grass/30 disabled:text-even-evergreen/40 disabled:cursor-not-allowed mt-6"
             >
               {loading ? t("saving") : t("continueCta")}

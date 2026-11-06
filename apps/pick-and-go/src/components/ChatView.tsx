@@ -497,6 +497,8 @@ const MessageContent = ({
   userId: string | null;
 }) => {
   const t = useTranslations("ChatView");
+  const { restaurant } = useRestaurant();
+  const showImages = !!restaurant && restaurant.menu_show_images !== false;
   const { text, dishId, dishName } = parseMessageContent(
     content,
     !!isStreaming,
@@ -614,15 +616,16 @@ const MessageContent = ({
       }
     }
 
-    elements.push(
-      <img
-        key={m.url + key++}
-        src={m.url}
-        alt={m.alt || "Imagen"}
-        className="rounded-lg max-w-full h-auto"
-        loading="lazy"
-      />,
-    );
+    if (showImages)
+      elements.push(
+        <img
+          key={m.url + key++}
+          src={m.url}
+          alt={m.alt || "Imagen"}
+          className="rounded-lg max-w-full h-auto"
+          loading="lazy"
+        />,
+      );
 
     lastIndex = m.index + m.length;
   }

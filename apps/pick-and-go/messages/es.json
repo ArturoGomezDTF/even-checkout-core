@@ -71,11 +71,11 @@
     "phoneStepTitle": "Ingresa tu número",
     "phoneStepTitleAlt": "Ingresa tu número de celular",
     "verifyStepTitle": "Verifica tu código",
-    "profileStepTitle": "Completa tu perfil",
-    "profileStepTitleAlt": "Cuéntanos sobre ti",
+    "profileStepTitle": "Registra tu perfil",
+    "profileStepTitleAlt": "Registra tu perfil",
     "phoneStepSubtitle": "Te enviaremos un código de verificación",
     "verifyStepSubtitlePrefix": "Enviamos un código al",
-    "profileStepSubtitle": "Cuéntanos un poco más sobre ti",
+    "profileStepSubtitle": "Solo lo tendrás que hacer una vez",
     "phonePlaceholder": "Número de teléfono",
     "examplePrefix": "Ejemplo:",
     "firstNamePlaceholder": "Nombre",
@@ -150,6 +150,8 @@
     "productsSelected": "{count, plural, one {# producto seleccionado} other {# productos seleccionados}}",
     "customizeExtras": "Personalizar productos adicionales",
     "selectUpTo": "Selecciona hasta {max}",
+    "selectExactly": "Selecciona {count}",
+    "selectBetween": "Selecciona de {min} a {max}",
     "notesPlaceholder": "Alergias, instrucciones especiales, comentarios...",
     "addToCartCta": "Agregar • ${amount} MXN",
     "updateCartCta": "Actualizar • ${amount} MXN",
@@ -312,7 +314,12 @@
   },
   "RestaurantClosedModal": {
     "title": "El restaurante está cerrado",
-    "message": "Lo sentimos, el restaurante {name} está cerrado en este momento."
+    "message": "Lo sentimos, el restaurante {name} está cerrado en este momento.",
+    "notYetTitle": "Aún no abrimos",
+    "notYetMessage": "Podrás pedir a partir de {when}.",
+    "whenToday": "hoy a las {time}",
+    "whenTomorrow": "mañana a las {time}",
+    "whenDay": "el {day} a las {time}"
   },
   "POSBlockedModal": {
     "restaurantClosedTitle": "Restaurante cerrado",
@@ -433,5 +440,12 @@
     "switchLanguage": "Cambiar idioma",
     "showMoreOptions": "+{count} más",
     "showLessOptions": "Ver menos"
+  },
+  "Terms": {
+    "checkbox": "He leído y acepto los <terms>Términos y Condiciones</terms> y el <privacy>Aviso de Privacidad</privacy>.",
+    "updateTitle": "Actualizamos nuestros términos",
+    "updateBody": "Actualizamos nuestros Términos y Condiciones y Aviso de Privacidad.",
+    "updateCta": "Entendido",
+    "errorSave": "No pudimos guardar tu aceptación. Intenta de nuevo."
   }
 }

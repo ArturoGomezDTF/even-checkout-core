@@ -12,6 +12,7 @@ import {
   authService,
   type AuthResponse,
   type ProfileData,
+  type TermsStatus,
 } from "../services/auth.service";
 
 interface User {
@@ -34,6 +35,7 @@ interface Profile {
   accountType: string;
   createdAt?: string;
   updatedAt?: string;
+  termsStatus?: TermsStatus | null;
 }
 
 interface AuthContextType {
@@ -47,6 +49,7 @@ interface AuthContextType {
   updateProfile: (updates: Partial<ProfileData>) => Promise<AuthResponse>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  acknowledgeTermsUpdate: () => Promise<AuthResponse>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -403,6 +406,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loadProfile();
   };
 
+  const acknowledgeTermsUpdate = async (): Promise<AuthResponse> => {
+    const response = await authService.acknowledgeTermsUpdate();
+    if (response.success) await loadProfile();
+    return response;
+  };
+
   const value = {
     user,
     profile,
@@ -414,6 +423,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     updateProfile,
     logout,
     refreshProfile,
+    acknowledgeTermsUpdate,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

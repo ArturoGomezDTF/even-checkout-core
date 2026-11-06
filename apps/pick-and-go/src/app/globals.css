@@ -47,6 +47,24 @@
   animation: shake-cart 0.3s ease forwards;
 }
 
+@keyframes qty-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  60% {
+    transform: scale(1.25);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-qty-pop {
+  animation: qty-pop 0.25s ease-out;
+}
+
 /* OrderAnimation styles */
 @keyframes expand-circle {
   0% {

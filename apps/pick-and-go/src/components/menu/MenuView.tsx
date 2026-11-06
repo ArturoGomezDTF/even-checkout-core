@@ -2,6 +2,10 @@
 
 import MenuHeader from "../headers/MenuHeader";
 import MenuCategory from "./MenuCategory";
+import {
+  setMenuCategory,
+  takeMenuPosition,
+} from "../../utils/menuScrollMemory";
 import PepperIcon from "../UI/PepperIcon";
 import {
   Search,
@@ -20,6 +24,7 @@ import {
   useMemo,
   useEffect,
   useRef,
+  useLayoutEffect,
   useCallback,
   useDeferredValue,
   useTransition,
@@ -108,9 +113,61 @@ function UserAvatar({
 export default function MenuView() {
   const t = useTranslations("MenuView");
   const tc = useTranslations("Common");
-  const [filter, setFilter] = useState("Todo");
+  const { restaurantId: menuKey, menu: initialMenu } = useRestaurant();
+  // Posición guardada al abrir un platillo (se consume una sola vez al montar)
+  const [restored] = useState(() => {
+    const position = takeMenuPosition(String(menuKey));
+    if (
+      position &&
+      position.category !== "Todo" &&
+      !initialMenu?.some((s) => s.name === position.category)
+    ) {
+      position.category = "Todo";
+    }
+    return position;
+  });
+  const [filter, setFilter] = useState(restored?.category ?? "Todo");
   const [searchQuery, setSearchQuery] = useState("");
   const [, startTransition] = useTransition();
+  // activeCat es urgente (mueve la píldora ya); filter va en transición (filtra la lista)
+  const [activeCat, setActiveCat] = useState(restored?.category ?? "Todo");
+
+  useEffect(() => {
+    setMenuCategory(activeCat);
+  }, [activeCat]);
+
+  // Regresa el platillo tocado a la misma altura de pantalla en la que estaba.
+  // Se repite en el siguiente frame porque Next hace scroll al top al montar la ruta.
+  useLayoutEffect(() => {
+    if (!restored) return;
+    const restore = () => {
+      const el = document.querySelector<HTMLElement>(
+        `[data-menu-item-id="${CSS.escape(restored.itemId)}"]`,
+      );
+      if (!el) return;
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo(0, top - restored.itemTop);
+    };
+    restore();
+    const frame = requestAnimationFrame(restore);
+    return () => cancelAnimationFrame(frame);
+  }, [restored]);
+  const filterBtnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [pill, setPill] = useState<{
+    left: number;
+    width: number;
+    animate: boolean;
+  } | null>(null);
+
+  const selectCategory = (cat: string) => {
+    setActiveCat(cat);
+    filterBtnRefs.current[cat]?.scrollIntoView({
+      behavior: "smooth",
+      inline: "center",
+      block: "nearest",
+    });
+    startTransition(() => setFilter(cat));
+  };
   const [showBranchModal, setShowBranchModal] = useState(false);
   const [activeOrders, setActiveOrders] = useState<
     NonNullable<ActiveOrderResponse["data"]>[]
@@ -124,6 +181,7 @@ export default function MenuView() {
   const { user, profile, isAuthenticated, logout } = useAuth();
   const { state, refreshCart } = useCart();
   const { restaurant, menu, error } = useRestaurant();
+  const showImages = !!restaurant && restaurant.menu_show_images !== false;
   const { branches, selectedBranchNumber } = useBranch();
 
   const { navigateWithRestaurantId } = useNavigation();
@@ -342,10 +400,25 @@ export default function MenuView() {
     return categories;
   }, [menu]);
 
+  // Posiciona la píldora negra bajo la categoría activa (y re-mide si cambia el ancho por fuentes)
+  useLayoutEffect(() => {
+    const btn = filterBtnRefs.current[activeCat];
+    if (!btn) return;
+    const measure = () =>
+      setPill((prev) => ({
+        left: btn.offsetLeft,
+        width: btn.offsetWidth,
+        animate: prev !== null,
+      }));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(btn);
+    return () => observer.disconnect();
+  }, [activeCat, categorias]);
+
   const totalItems = state.totalItems;
 
-  const deferredFilter = useDeferredValue(filter);
-  const deferredSearch = useDeferredValue(searchQuery);
+  const deferredFilter = useDeferredValue(filter);  const deferredSearch = useDeferredValue(searchQuery);
 
   // Filtrar menú usando valores diferidos — el render pesado ocurre en baja prioridad
   const filteredMenu = useMemo(() => {
@@ -530,15 +603,25 @@ export default function MenuView() {
           </div>
 
           {/* Filters */}
-          <div className="flex gap-2 md:gap-3 mt-3 md:mt-5 mb-3 md:mb-5 w-full overflow-x-auto scrollbar-hide">
+          <div className="relative flex gap-2 md:gap-3 mt-3 md:mt-5 mb-3 md:mb-5 w-full overflow-x-auto scrollbar-hide">
+            {pill && (
+              <span
+                aria-hidden
+                className={`absolute top-0 bottom-0 rounded-full bg-black ${pill.animate ? "transition-[left,width] duration-300 ease-[cubic-bezier(0.34,1.3,0.64,1)]" : ""}`}
+                style={{ left: pill.left, width: pill.width }}
+              />
+            )}
             {categorias.map((cat) => (
               <button
                 key={cat}
-                onClick={() => startTransition(() => setFilter(cat))}
-                className={`px-3 md:px-5 lg:px-6 py-1 md:py-2 text-sm md:text-base lg:text-lg rounded-full whitespace-nowrap flex-shrink-0
+                ref={(el) => {
+                  filterBtnRefs.current[cat] = el;
+                }}
+                onClick={() => selectCategory(cat)}
+                className={`relative px-3 md:px-5 lg:px-6 py-1 md:py-2 text-sm md:text-base lg:text-lg rounded-full whitespace-nowrap flex-shrink-0 transition-colors duration-300
                 ${
-                  filter === cat
-                    ? "bg-black text-white hover:bg-slate-800"
+                  activeCat === cat
+                    ? "text-white"
                     : "text-gray-500 hover:bg-gray-100"
                 }`}
               >
@@ -571,10 +654,10 @@ export default function MenuView() {
 
       {/* Carrito flotante */}
       {totalItems > 0 && (
-        <div className="fixed bottom-6 md:bottom-8 lg:bottom-10 left-0 right-0 z-50 flex justify-center">
+        <div className="fixed bottom-6 md:bottom-8 lg:bottom-10 left-0 right-0 z-50 flex justify-center pointer-events-none">
           <button
             onClick={() => navigateWithRestaurantId("/cart")}
-            className="bg-even-grass text-even-evergreen rounded-full px-6 md:px-8 lg:px-10 py-4 md:py-5 lg:py-6 shadow-lg flex items-center gap-3 md:gap-4 cursor-pointer transition-all hover:scale-105 animate-bounce-in active:scale-90"
+            className="pointer-events-auto bg-even-grass text-even-evergreen rounded-full px-6 md:px-8 lg:px-10 py-4 md:py-5 lg:py-6 shadow-lg flex items-center gap-3 md:gap-4 cursor-pointer transition-all hover:scale-105 animate-bounce-in active:scale-90"
           >
             <ShoppingCart className="size-5 md:size-6 lg:size-7" />
             <span className="text-base md:text-lg lg:text-xl font-medium">
@@ -856,25 +939,27 @@ export default function MenuView() {
                       key={dish.id || index}
                       className="flex items-center gap-3 md:gap-4 lg:gap-5 bg-white/5 rounded-xl md:rounded-2xl p-3 md:p-4 lg:p-5 border border-white/10"
                     >
-                      <div className="flex-shrink-0">
-                        <div className="size-16 md:size-20 lg:size-24 bg-gray-300 rounded-sm flex items-center justify-center overflow-hidden">
-                          {dish.images &&
-                          dish.images.length > 0 &&
-                          dish.images[0] ? (
-                            <img
-                              src={dish.images[0]}
-                              alt={dish.item}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <img
-                              src="/even/even-asterisk-evergreen.svg"
-                              alt="Logo Even"
-                              className="size-10 md:size-12 lg:size-14 object-contain"
-                            />
-                          )}
+                      {showImages && (
+                        <div className="flex-shrink-0">
+                          <div className="size-16 md:size-20 lg:size-24 bg-gray-300 rounded-sm flex items-center justify-center overflow-hidden">
+                            {dish.images &&
+                            dish.images.length > 0 &&
+                            dish.images[0] ? (
+                              <img
+                                src={dish.images[0]}
+                                alt={dish.item}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <img
+                                src="/even/even-asterisk-evergreen.svg"
+                                alt="Logo Even"
+                                className="size-10 md:size-12 lg:size-14 object-contain"
+                              />
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <h3 className="text-base md:text-lg lg:text-xl text-white font-medium capitalize">
                           {dish.item}
