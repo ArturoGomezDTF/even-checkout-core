@@ -13,6 +13,8 @@ export interface CustomField {
   options?: CustomFieldOption[];
   required?: boolean;
   maxSelections?: number;
+  // Solo checkboxes: mínimo a elegir; igual a maxSelections = número exacto
+  minSelections?: number;
   // Solo lo traen items sincronizados de un POS con addons/modificadores
   // (ej. Givex) — "addon" (con precio) vs "modifier" (sin precio, ej. tipo
   // de pan). Necesario para reconstruir addon_list/modifier_list al armar

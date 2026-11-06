@@ -13,6 +13,7 @@ import { useTranslations } from "next-intl";
 import { useFlyToCart } from "@/hooks/useFlyToCart";
 import { lockScroll, unlockScroll } from "@/utils/scrollLock";
 import type { PromoActivation } from "@/services/promoActivations.service";
+import { useRestaurant } from "@/context/RestaurantContext";
 
 interface RowProps {
   activation: PromoActivation;
@@ -41,6 +42,8 @@ function PromoActivationCard({
   onPrevPage,
   onNextPage,
 }: RowProps) {
+  const { restaurant } = useRestaurant();
+  const showImages = !!restaurant && restaurant.menu_show_images !== false;
   const t = useTranslations("PromoClaimModal");
   const { flyToCart } = useFlyToCart();
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -165,23 +168,25 @@ function PromoActivationCard({
                     : "border-white/10 bg-white/5 hover:bg-white/10"
                 } ${!hasChoice ? "cursor-default" : ""}`}
               >
-                <div className="size-14 shrink-0 rounded-lg overflow-hidden bg-white/5 flex items-center justify-center">
-                  {item.menu_items?.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={item.menu_items.image_url}
-                      alt={item.menu_items.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src="/even/even-asterisk-grass.svg"
-                      alt="Even"
-                      className="size-7"
-                    />
-                  )}
-                </div>
+                {showImages && (
+                  <div className="size-14 shrink-0 rounded-lg overflow-hidden bg-white/5 flex items-center justify-center">
+                    {item.menu_items?.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={item.menu_items.image_url}
+                        alt={item.menu_items.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src="/even/even-asterisk-grass.svg"
+                        alt="Even"
+                        className="size-7"
+                      />
+                    )}
+                  </div>
+                )}
                 <p className="flex-1 min-w-0 text-white text-sm font-medium text-left truncate">
                   {item.menu_items?.name || t("productFallback")}
                 </p>

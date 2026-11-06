@@ -71,10 +71,10 @@
   "Auth": {
     "phoneStepTitle": "Enter your number",
     "verifyStepTitle": "Verify your code",
-    "profileStepTitle": "Complete your profile",
+    "profileStepTitle": "Register your profile",
     "phoneStepSubtitle": "We'll send you a verification code",
     "verifyStepSubtitlePrefix": "We sent a code to",
-    "profileStepSubtitle": "Tell us a bit more about yourself",
+    "profileStepSubtitle": "You'll only need to do this once",
     "phonePlaceholder": "Phone number",
     "firstNamePlaceholder": "First name",
     "lastNamePlaceholder": "Last name",
@@ -319,7 +319,12 @@
   },
   "RestaurantClosedModal": {
     "title": "The restaurant is closed",
-    "message": "Sorry, {name} is closed right now."
+    "message": "Sorry, {name} is closed right now.",
+    "notYetTitle": "We are not open yet",
+    "notYetMessage": "You can order starting {when}.",
+    "whenToday": "today at {time}",
+    "whenTomorrow": "tomorrow at {time}",
+    "whenDay": "{day} at {time}"
   },
   "PromoClaimModal": {
     "accountDiscountLabel": "Discount on your bill",
@@ -437,6 +442,8 @@
     "productsSelected": "{count, plural, one {# product selected} other {# products selected}}",
     "customizeExtras": "Customize additional products",
     "selectUpTo": "Select up to {max}",
+    "selectExactly": "Select {count}",
+    "selectBetween": "Select {min} to {max}",
     "notesPlaceholder": "Allergies, special instructions, comments...",
     "addToCartCta": "Add • ${amount} MXN",
     "updateCartCta": "Update • ${amount} MXN",
@@ -456,5 +463,12 @@
     "errorLoadingMessage": "We couldn't load the dish",
     "backToHomeSubtitle": "Return to the home page",
     "tryAgainLater": "Please try again later"
+  },
+  "Terms": {
+    "checkbox": "I have read and accept the <terms>Terms and Conditions</terms> and the <privacy>Privacy Notice</privacy>.",
+    "updateTitle": "We updated our terms",
+    "updateBody": "We updated our Terms and Conditions and Privacy Notice.",
+    "updateCta": "Got it",
+    "errorSave": "We couldn't save your acceptance. Please try again."
   }
 }

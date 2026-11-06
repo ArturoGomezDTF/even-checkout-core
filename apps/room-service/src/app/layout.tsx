@@ -5,6 +5,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import TermsUpdateToast from "@/components/TermsUpdateToast";
 import { RestaurantProvider } from "@/context/RestaurantContext";
 import { RoomProvider } from "@/context/RoomContext";
 import { CartProvider } from "@/context/CartContext";
@@ -82,6 +83,7 @@ export default async function RootLayout({
         />
         <NextIntlClientProvider locale={locale} messages={messages}>
           <AuthProvider>
+            <TermsUpdateToast />
             <RestaurantProvider>
               <CartProvider>
                 <PepperProvider>
