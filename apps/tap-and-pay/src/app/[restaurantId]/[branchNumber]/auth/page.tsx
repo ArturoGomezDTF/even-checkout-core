@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 import { authService } from "@/app/services/auth.service";
 import { useRestaurant } from "@/app/context/RestaurantContext";
 import { useAuth } from "@/app/context/AuthContext";
+import TermsCheckbox from "@/app/components/TermsCheckbox";
 import { useTableNavigation } from "@/app/hooks/useTableNavigation";
 import { orderService } from "@/app/services/order.service";
 import { useTable } from "@/app/context/TableContext";
@@ -58,6 +59,7 @@ export default function AuthPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [age, setAge] = useState<number | "">("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   // Envío del SMS en curso: el paso de código se muestra de inmediato
   const [sendingCode, setSendingCode] = useState(false);
@@ -332,7 +334,7 @@ export default function AuthPage() {
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (age === "") return;
+    if (age === "" || !acceptedTerms) return;
     setError("");
     setLoading(true);
 
@@ -342,6 +344,7 @@ export default function AuthPage() {
         firstName,
         lastName,
         birthDate: `${birthYear}-01-01`,
+        acceptedTerms: true,
       });
 
       if (response.success) {
@@ -610,10 +613,16 @@ export default function AuthPage() {
               </select>
             </div>
 
+            <TermsCheckbox
+              checked={acceptedTerms}
+              onChange={setAcceptedTerms}
+              disabled={loading}
+            />
+
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading || !firstName || age === ""}
+              disabled={loading || !firstName || age === "" || !acceptedTerms}
               className="w-full bg-black hover:bg-stone-950 text-white py-3 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-6"
             >
               {loading ? t("saving") : t("continueCta")}

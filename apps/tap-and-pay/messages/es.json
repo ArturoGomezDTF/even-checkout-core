@@ -131,10 +131,10 @@
   "Auth": {
     "phoneStepTitle": "Ingresa tu número",
     "verifyStepTitle": "Verifica tu código",
-    "profileStepTitle": "Completa tu perfil",
+    "profileStepTitle": "Registra tu perfil",
     "phoneStepSubtitle": "Te enviaremos un código de verificación",
     "verifyStepSubtitlePrefix": "Enviamos un código al",
-    "profileStepSubtitle": "Cuéntanos un poco más sobre ti",
+    "profileStepSubtitle": "Solo lo tendrás que hacer una vez",
     "phonePlaceholder": "Número de teléfono",
     "firstNamePlaceholder": "Nombre",
     "lastNamePlaceholder": "Apellido",
@@ -220,7 +220,7 @@
     "amountToPayLabel": "Monto a pagar",
     "maxAmount": "Máximo: ${amount}",
     "errorAmountExceedsMax": "¡El monto excede el máximo permitido!",
-    "howManyPeopleLabel": "¿Entre cuántas personas se divide?",
+    "howManyPeopleLabel": "¿Entre cuántas personas se divide lo que falta?",
     "perPersonAmount": "Corresponde ${amount} por persona",
     "noPendingItems": "No hay artículos pendientes",
     "selectItemToContinue": "Selecciona un artículo para continuar",
@@ -229,7 +229,6 @@
     "totalLabel": "Total:",
     "yourShareLabel": "Tu parte:",
     "yourAmountLabel": "Tu monto:",
-    "onlyRemainingToPay": "Solo quedan ${amount} por pagar",
     "tipLabel": "Propina",
     "underMinimumWarning": "¡No has completado el mínimo de compra!",
     "totalSummaryTitle": "Resumen del total",
@@ -239,7 +238,15 @@
     "yourShareBreakdown": "Tu parte",
     "yourAmountBreakdown": "Tu monto",
     "tipBreakdown": "+ Propina",
-    "serviceCommissionBreakdown": "+ Comisión de servicio"
+    "serviceCommissionBreakdown": "+ Comisión de servicio",
+    "splitTitle": "Divide lo que falta",
+    "yourShareTitle": "Tu parte",
+    "ofAmount": "de ${amount}",
+    "peopleUnit": "personas",
+    "fewerPeople": "Una persona menos",
+    "morePeople": "Una persona más",
+    "includesTip": "incluye ${amount} propina",
+    "continueCta": "Continuar"
   },
   "PaymentOptionsPage": {
     "subtitle": "Elige cómo quieres pagar la cuenta",
@@ -271,6 +278,10 @@
     "refreshCta": "Actualizar",
     "tableBillTitle": "Cuenta de Mesa",
     "noOrdersYet": "Aún no hay pedidos realizados para esta mesa",
+    "emptyBillTitle": "Tu cuenta aún no está lista",
+    "emptyBillMessage": "Aparecerá aquí en cuanto la registre tu mesero",
+    "posOfflineTitle": "Restaurante sin conexión",
+    "turnoClosedTitle": "La caja está cerrada",
     "paidItemsTitle": "Artículos Pagados",
     "hideCta": "Ocultar",
     "showCta": "Ver",
@@ -280,5 +291,12 @@
     "paidLabel": "Pagado:",
     "totalLabel": "Total:",
     "tableFullyPaid": "¡Cuenta pagada completamente!"
+  },
+  "Terms": {
+    "checkbox": "He leído y acepto los <terms>Términos y Condiciones</terms> y el <privacy>Aviso de Privacidad</privacy>.",
+    "updateTitle": "Actualizamos nuestros términos",
+    "updateBody": "Actualizamos nuestros Términos y Condiciones y Aviso de Privacidad.",
+    "updateCta": "Entendido",
+    "errorSave": "No pudimos guardar tu aceptación. Intenta de nuevo."
   }
 }

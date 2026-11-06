@@ -23,7 +23,12 @@ import {
   clearStoredPaymentIntent,
   updateStoredPaymentIntent,
 } from "@/app/utils/paymentIdempotency";
+import {
+  getOrCreateWalletOrderId,
+  clearCachedWalletOrder,
+} from "@/app/utils/walletOrderCache";
 import { useTranslations } from "next-intl";
+import { calculateCommissions } from "@/app/utils/commissionCalculator";
 
 const POLL_INTERVAL_MS = 3000;
 const POLL_TIMEOUT_MS = 60000;
@@ -68,17 +73,14 @@ export default function CardSelectionPage() {
   const totalAmountCharged = parseFloat(searchParams.get("amount") || "0");
   const baseAmount = parseFloat(searchParams.get("baseAmount") || "0");
   const tipAmount = parseFloat(searchParams.get("tipAmount") || "0");
-  const ivaTip = parseFloat(searchParams.get("ivaTip") || "0");
-  const evenCommissionClient = parseFloat(
-    searchParams.get("evenCommissionClient") || "0",
-  );
-  const ivaEvenClient = parseFloat(searchParams.get("ivaEvenClient") || "0");
-  const evenCommissionRestaurant = parseFloat(
-    searchParams.get("evenCommissionRestaurant") || "0",
-  );
-  const evenCommissionTotal = parseFloat(
-    searchParams.get("evenCommissionTotal") || "0",
-  );
+  // La comisión se deriva de consumo + propina (el backend la recalcula igual).
+  const {
+    ivaTip,
+    evenCommissionClient,
+    ivaEvenClient,
+    evenCommissionRestaurant,
+    evenCommissionTotal,
+  } = calculateCommissions(baseAmount, tipAmount);
   const selectedItemsParam = searchParams.get("selectedItems");
 
   const evenClientCharge = evenCommissionClient + ivaEvenClient;
@@ -361,29 +363,48 @@ export default function CardSelectionPage() {
 
     (async () => {
       try {
-        const orderResult = await paymentService.createApplePayOrder({
-          amount: totalAmountCharged,
-          currency: "MXN",
-          restaurantId: restaurantParams?.restaurantId as string,
-          baseAmount,
-          tipAmount,
-          // even-backend #333: identificadores para que el servidor recalcule
-          // el monto contra tap_pay_orders en vez de cobrar el que mandamos.
-          // Son opcionales en el backend: si no los mandamos, cobra igual que
-          // antes. Ver docs/03-mapa-montos-server-side.md en even-backend.
-          id_tap_pay_order: state.order?.order_id,
-          payment_type: paymentType,
-          selected_item_ids: paymentType === "select-items" ? selectedItems : undefined,
-        });
+        let rejection: any = null;
+        const appleOrderId = await getOrCreateWalletOrderId(
+          "apple",
+          {
+            items: [],
+            tipAmount,
+            discountId: null,
+            total: totalAmountCharged,
+          },
+          async () => {
+            const orderResult = await paymentService.createApplePayOrder({
+              amount: totalAmountCharged,
+              currency: "MXN",
+              restaurantId: restaurantParams?.restaurantId as string,
+              baseAmount,
+              tipAmount,
+              // even-backend #333: identificadores para que el servidor recalcule
+              // el monto contra tap_pay_orders en vez de cobrar el que mandamos.
+              // Son opcionales en el backend: si no los mandamos, cobra igual que
+              // antes. Ver docs/03-mapa-montos-server-side.md en even-backend.
+              id_tap_pay_order: state.order?.order_id,
+              payment_type: paymentType,
+              selected_item_ids:
+                paymentType === "select-items" ? selectedItems : undefined,
+            });
 
-        const appleOrderId =
-          (orderResult as any).orderId ?? orderResult.data?.orderId;
-        if (!orderResult.success || !appleOrderId) {
+            const id =
+              (orderResult as any).orderId ?? orderResult.data?.orderId;
+            if (!orderResult.success || !id) {
+              rejection = orderResult;
+              return null;
+            }
+            return id;
+          },
+        );
+
+        if (!appleOrderId) {
           // Un 4xx con código semántico es un rechazo definitivo (400
           // baseAmount <= 0, 422 payment_rejected, ...): reintentar con los
           // mismos datos fallaría igual, así que se cae a tarjeta guardada. Un
           // 5xx pasajero no oculta la wallet.
-          if (isDefinitiveWalletRejection(orderResult)) {
+          if (rejection && isDefinitiveWalletRejection(rejection)) {
             setApplePayUnavailable(true);
             setWalletOrderRejected(true);
           }
@@ -422,6 +443,7 @@ export default function CardSelectionPage() {
           }
         });
         applePaySDK.on("success", (event: any) => {
+          clearCachedWalletOrder("apple");
           const walletPaymentId = event?.detail?.id || appleOrderId;
           setApplePayPaymentId(walletPaymentId);
           setIsApplePayProcessing(true);
@@ -444,7 +466,7 @@ export default function CardSelectionPage() {
           buttonStyle: "black",
           buttonType: "pay",
           borderRadius: "8px",
-          supportedNetworks: ["visa", "masterCard", "amex"],
+          supportedNetworks: ["visa", "masterCard"],
         });
 
         if (sdkAlreadyLoaded)
@@ -472,29 +494,48 @@ export default function CardSelectionPage() {
 
     (async () => {
       try {
-        const orderResult = await paymentService.createGooglePayOrder({
-          amount: totalAmountCharged,
-          currency: "MXN",
-          restaurantId: restaurantParams?.restaurantId as string,
-          baseAmount,
-          tipAmount,
-          // even-backend #333: identificadores para que el servidor recalcule
-          // el monto contra tap_pay_orders en vez de cobrar el que mandamos.
-          // Son opcionales en el backend: si no los mandamos, cobra igual que
-          // antes. Ver docs/03-mapa-montos-server-side.md en even-backend.
-          id_tap_pay_order: state.order?.order_id,
-          payment_type: paymentType,
-          selected_item_ids: paymentType === "select-items" ? selectedItems : undefined,
-        });
+        let rejection: any = null;
+        const googleOrderId = await getOrCreateWalletOrderId(
+          "google",
+          {
+            items: [],
+            tipAmount,
+            discountId: null,
+            total: totalAmountCharged,
+          },
+          async () => {
+            const orderResult = await paymentService.createGooglePayOrder({
+              amount: totalAmountCharged,
+              currency: "MXN",
+              restaurantId: restaurantParams?.restaurantId as string,
+              baseAmount,
+              tipAmount,
+              // even-backend #333: identificadores para que el servidor recalcule
+              // el monto contra tap_pay_orders en vez de cobrar el que mandamos.
+              // Son opcionales en el backend: si no los mandamos, cobra igual que
+              // antes. Ver docs/03-mapa-montos-server-side.md en even-backend.
+              id_tap_pay_order: state.order?.order_id,
+              payment_type: paymentType,
+              selected_item_ids:
+                paymentType === "select-items" ? selectedItems : undefined,
+            });
 
-        const googleOrderId =
-          (orderResult as any).orderId ?? orderResult.data?.orderId;
-        if (!orderResult.success || !googleOrderId) {
+            const id =
+              (orderResult as any).orderId ?? orderResult.data?.orderId;
+            if (!orderResult.success || !id) {
+              rejection = orderResult;
+              return null;
+            }
+            return id;
+          },
+        );
+
+        if (!googleOrderId) {
           // Un 4xx con código semántico es un rechazo definitivo (400
           // baseAmount <= 0, 422 payment_rejected, ...): reintentar con los
           // mismos datos fallaría igual, así que se cae a tarjeta guardada. Un
           // 5xx pasajero no oculta la wallet.
-          if (isDefinitiveWalletRejection(orderResult)) {
+          if (rejection && isDefinitiveWalletRejection(rejection)) {
             setGooglePayUnavailable(true);
             setWalletOrderRejected(true);
           }
@@ -536,6 +577,7 @@ export default function CardSelectionPage() {
           if (googlePaySucceededRef.current) return;
           googlePaySucceededRef.current = true;
           stopGooglePay3dsWatch();
+          clearCachedWalletOrder("google");
           setGooglePayPaymentId(walletPaymentId);
           setIsGooglePayProcessing(true);
           setConfirmedPaymentId(null);
@@ -555,9 +597,8 @@ export default function CardSelectionPage() {
         // y solo emite "success" si el iframe manda postMessage; la página de
         // recibo de EcartPay no lo manda, así que confirmamos por polling.
         const isOrderPaid = async () => {
-          const status = await paymentService.getEcartOrderStatus(
-            googleOrderId,
-          );
+          const status =
+            await paymentService.getEcartOrderStatus(googleOrderId);
           return !!status && PAID_ECART_STATUSES.includes(status);
         };
         const finishFromOverlay = () => {
@@ -759,10 +800,9 @@ export default function CardSelectionPage() {
               const deadline = Date.now() + POLL_TIMEOUT_MS;
               let resolvedId: string | null = null;
               while (Date.now() < deadline && !resolvedId) {
-                const statusRes =
-                  await paymentService.getPaymentIntentStatus(
-                    intent.intentKey,
-                  );
+                const statusRes = await paymentService.getPaymentIntentStatus(
+                  intent.intentKey,
+                );
                 if (statusRes.success) {
                   if (statusRes.status === "unknown") break;
                   if (
@@ -815,8 +855,7 @@ export default function CardSelectionPage() {
               return;
             } else {
               throw new Error(
-                chargeResult.error?.message ||
-                  t("errorCardChargeFailed"),
+                chargeResult.error?.message || t("errorCardChargeFailed"),
               );
             }
           } else {
@@ -994,8 +1033,9 @@ export default function CardSelectionPage() {
       const rawMessage =
         error instanceof Error ? error.message : t("errorUnknown");
       const errorTranslations: Record<string, string> = {
-        "Transaction rejected by your bank, please try another card.":
-          t("errors.bankRejected"),
+        "Transaction rejected by your bank, please try another card.": t(
+          "errors.bankRejected",
+        ),
         "Insufficient funds": t("errors.insufficientFunds"),
         "Card expired": t("errors.cardExpired"),
         "Invalid card number": t("errors.invalidCardNumber"),
@@ -1099,26 +1139,21 @@ export default function CardSelectionPage() {
       `/payment-success?paymentId=${pendingPaymentData?.paymentId || confirmedPaymentId}&amount=${totalAmountCharged}`,
       true,
     );
-  }, [verifying, confirmedPaymentId, pendingPaymentData, totalAmountCharged, navigateWithTable]);
+  }, [
+    verifying,
+    confirmedPaymentId,
+    pendingPaymentData,
+    totalAmountCharged,
+    navigateWithTable,
+  ]);
 
   useEffect(() => {
     if (errorMessage) setVerifying(false);
   }, [errorMessage]);
 
+  // add-card regresa con router.back(), así que no necesita los montos.
   const handleAddCard = (): void => {
-    const queryParams = new URLSearchParams({
-      amount: totalAmountCharged.toString(),
-      baseAmount: baseAmount.toString(),
-      tipAmount: tipAmount.toString(),
-      ivaTip: ivaTip.toString(),
-      evenCommissionClient: evenCommissionClient.toString(),
-      ivaEvenClient: ivaEvenClient.toString(),
-      evenCommissionRestaurant: evenCommissionRestaurant.toString(),
-      evenCommissionTotal: evenCommissionTotal.toString(),
-      type: paymentType,
-    });
-
-    navigateWithTable(`/add-card?${queryParams.toString()}`);
+    navigateWithTable("/add-card");
   };
 
   const handleDeleteCard = async (cardId: string) => {
@@ -1219,7 +1254,7 @@ export default function CardSelectionPage() {
           que seguimos esperando. Sin botón de cancelar ni de reintentar: un
           cobro ya pudo haberse concretado. */}
       {verifying && (
-        <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center px-8 text-center gap-6">
+        <div className="fixed inset-0 z-9999 bg-white flex flex-col items-center justify-center px-8 text-center gap-6">
           <Loader2 className="size-12 text-even-evergreen animate-spin" />
           <div>
             <h2 className="text-xl font-medium text-black mb-2">
@@ -1254,21 +1289,8 @@ export default function CardSelectionPage() {
             <div className="bg-white rounded-t-4xl flex-1 flex flex-col px-6 md:px-8 lg:px-10 overflow-hidden z-10">
               <div className="flex-1 overflow-y-auto py-8 pb-30">
                 {/* Payment Summary */}
-                <div className="mb-3 space-y-2">
-                  <div className="flex justify-between items-center text-base font-medium text-black">
-                    <span>{tc("subtotal")}</span>
-                    <span>${baseAmount.toFixed(2)} MXN</span>
-                  </div>
-                  {tipAmount > 0 && (
-                    <div className="flex justify-between items-center text-base font-medium text-black">
-                      <span>{tc("tipLabel")}</span>
-                      <span>${tipAmount.toFixed(2)} MXN</span>
-                    </div>
-                  )}
-                </div>
-
                 <div className="space-y-2 mb-6">
-                  <div className="flex justify-between items-center border-t pt-2">
+                  <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-black text-base md:text-lg lg:text-xl">
                         {tc("totalToPay")}
@@ -1537,19 +1559,21 @@ export default function CardSelectionPage() {
 
               {/* Contenido */}
               <div className="px-6 py-4">
-                <p className="text-black mb-4">
-                  {t("totalBreakdownIntro")}
-                </p>
+                <p className="text-black mb-4">{t("totalBreakdownIntro")}</p>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-black font-medium">{t("consumptionBreakdown")}</span>
+                    <span className="text-black font-medium">
+                      {t("consumptionBreakdown")}
+                    </span>
                     <span className="text-black font-medium">
                       ${baseAmount.toFixed(2)} MXN
                     </span>
                   </div>
                   {tipAmount > 0 && (
                     <div className="flex justify-between items-center">
-                      <span className="text-black font-medium">{t("tipBreakdown")}</span>
+                      <span className="text-black font-medium">
+                        {t("tipBreakdown")}
+                      </span>
                       <span className="text-black font-medium">
                         ${tipAmount.toFixed(2)} MXN
                       </span>
@@ -1688,7 +1712,9 @@ export default function CardSelectionPage() {
                                   <div className="flex items-center justify-between">
                                     <div className="flex-1">
                                       <p className="font-medium text-black text-base md:text-lg">
-                                        {t("monthsOptionLabel", { months: option.months })}
+                                        {t("monthsOptionLabel", {
+                                          months: option.months,
+                                        })}
                                       </p>
                                       <p className="text-xs md:text-sm text-gray-600">
                                         {t("monthlyInstallmentDetail", {

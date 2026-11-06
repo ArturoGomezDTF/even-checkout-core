@@ -9,6 +9,13 @@ export interface OrderSummary {
   remaining_amount: number;
 }
 
+export interface POSStatus {
+  hasIntegration: boolean;
+  requiresAgent: boolean;
+  isAgentConnected: boolean;
+  isTurnoOpen: boolean | null;
+}
+
 // El backend devuelve directamente el objeto TapPayOrder, no lo envuelve
 export type TapPayOrderResponse = TapPayOrder;
 
@@ -30,6 +37,64 @@ class OrderService {
       `/tap-pay/restaurants/${restaurantId}/branches/${branchNumber}/tables/${tableNumber}/order`,
       { method: "GET" },
     );
+  }
+
+  // Trae a Even la cuenta abierta en el POS si la mesa aún no tiene una
+  async openOrderFromPOS(
+    restaurantId: string,
+    branchNumber: string,
+    tableNumber: string,
+  ): Promise<ApiResponse<{ status: string }>> {
+    return this.request(
+      `/tap-pay/restaurants/${restaurantId}/branches/${branchNumber}/tables/${tableNumber}/open-from-pos`,
+      { method: "POST" },
+    );
+  }
+
+  // Estado del POS de la sucursal (agente conectado y turno abierto)
+  async getPOSStatus(
+    restaurantId: string,
+    branchNumber: string,
+  ): Promise<POSStatus | null> {
+    const res = (await this.request(
+      `/pos/restaurant/${restaurantId}/branch/${branchNumber}/agent-status`,
+      { method: "GET" },
+    )) as ApiResponse<unknown> & Partial<POSStatus>;
+    if (!res.success) return null;
+    return {
+      hasIntegration: res.hasIntegration ?? false,
+      requiresAgent: res.requiresAgent ?? false,
+      isAgentConnected: res.isAgentConnected ?? false,
+      isTurnoOpen: res.isTurnoOpen ?? null,
+    };
+  }
+
+  // Orden activa; si no hay, intenta abrirla desde el POS y la vuelve a pedir
+  async getOrOpenActiveOrderByTable(
+    restaurantId: string,
+    branchNumber: string,
+    tableNumber: string,
+  ): Promise<ApiResponse<TapPayOrderResponse>> {
+    const first = await this.getActiveOrderByTable(
+      restaurantId,
+      branchNumber,
+      tableNumber,
+    );
+    if (!first.success || first.data) return first;
+
+    try {
+      const opened = await this.openOrderFromPOS(
+        restaurantId,
+        branchNumber,
+        tableNumber,
+      );
+      const status = opened.data?.status;
+      if (status !== "opened" && status !== "already_open") return first;
+    } catch {
+      return first;
+    }
+
+    return this.getActiveOrderByTable(restaurantId, branchNumber, tableNumber);
   }
 
   // Obtener orden por ID

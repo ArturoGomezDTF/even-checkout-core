@@ -2,7 +2,10 @@
 
 import { useRef, useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { useParams } from "next/navigation";
 import { useTableNavigation } from "@/app/hooks/useTableNavigation";
+import TermsCheckbox from "@/app/components/TermsCheckbox";
+import { registerGuestWithTerms } from "@/app/services/guestRegistration.service";
 import MenuHeader from "@/app/components/headers/MenuHeader";
 import { Loader2 } from "lucide-react";
 import { useTable } from "@/app/context/TableContext";
@@ -14,7 +17,11 @@ export default function UserPage() {
   const tc = useTranslations("Common");
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const tTerms = useTranslations("Terms");
+  const params = useParams();
   const [userName, setUserName] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsError, setTermsError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { tableNumber, navigateWithTable } = useTableNavigation();
   const { state, loadTableData } = useTable();
@@ -32,7 +39,7 @@ export default function UserPage() {
 
   // Manejar presión de Enter/Intro
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && userName.trim() && !isSubmitting) {
+    if (e.key === "Enter" && userName.trim() && acceptedTerms && !isSubmitting) {
       e.preventDefault();
       handleProceedToOrder();
     }
@@ -51,8 +58,20 @@ export default function UserPage() {
   };
 
   const handleProceedToOrder = async () => {
-    if (userName.trim()) {
+    if (userName.trim() && acceptedTerms) {
       setIsSubmitting(true);
+      setTermsError("");
+      const saved = await registerGuestWithTerms({
+        guestId,
+        name: userName.trim(),
+        restaurantId: params?.restaurantId as string,
+        branchNumber: params?.branchNumber as string,
+      });
+      if (!saved) {
+        setTermsError(tTerms("errorSave"));
+        setIsSubmitting(false);
+        return;
+      }
       try {
         // Asegurar que tenemos un guest_id
         let currentGuestId = guestId;
@@ -139,6 +158,20 @@ export default function UserPage() {
                   className="w-full px-6 md:px-8 lg:px-10 py-3 md:py-4 lg:py-5 bg-gray-100/90 backdrop-blur-xl rounded-[9999px]! text-black text-xl md:text-2xl lg:text-3xl text-center font-normal placeholder:text-gray-400 focus:outline-none border border-white/80 shadow-[0_2px_8px_rgba(0,0,0,0.06),inset_0_1px_6px_rgba(255,255,255,0.8)] focus:shadow-[0_2px_8px_rgba(0,0,0,0.04),inset_0_0_0_1.2px_rgba(130,230,87,0.7)] transition-shadow"
                 />
               </div>
+
+              <div className="w-full mt-6">
+                <TermsCheckbox
+                  checked={acceptedTerms}
+                  onChange={setAcceptedTerms}
+                  disabled={isSubmitting}
+                  variant="light"
+                />
+                {termsError && (
+                  <p className="mt-3 text-sm text-red-600 text-center">
+                    {termsError}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -149,9 +182,9 @@ export default function UserPage() {
         <div className="mx-4 md:mx-6 lg:mx-8 w-full max-w-full px-4 md:px-6 lg:px-8">
           <button
             onClick={handleProceedToOrder}
-            disabled={!userName.trim()}
+            disabled={!userName.trim() || !acceptedTerms || isSubmitting}
             className={`w-full py-4 md:py-5 lg:py-6 rounded-full transition-all text-even-evergreen cursor-pointer text-base md:text-lg lg:text-xl ${
-              userName.trim() && !isSubmitting
+              userName.trim() && acceptedTerms && !isSubmitting
                 ? "bg-even-grass animate-pulse-button active:scale-95"
                 : "bg-even-grass opacity-50 cursor-not-allowed"
             }`}

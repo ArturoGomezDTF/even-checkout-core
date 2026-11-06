@@ -131,10 +131,10 @@
   "Auth": {
     "phoneStepTitle": "Enter your number",
     "verifyStepTitle": "Verify your code",
-    "profileStepTitle": "Complete your profile",
+    "profileStepTitle": "Register your profile",
     "phoneStepSubtitle": "We'll send you a verification code",
     "verifyStepSubtitlePrefix": "We sent a code to",
-    "profileStepSubtitle": "Tell us a bit more about yourself",
+    "profileStepSubtitle": "You'll only need to do this once",
     "phonePlaceholder": "Phone number",
     "firstNamePlaceholder": "First name",
     "lastNamePlaceholder": "Last name",
@@ -220,7 +220,7 @@
     "amountToPayLabel": "Amount to pay",
     "maxAmount": "Maximum: ${amount}",
     "errorAmountExceedsMax": "The amount exceeds the maximum allowed!",
-    "howManyPeopleLabel": "How many people is it split between?",
+    "howManyPeopleLabel": "How many people are splitting what's left?",
     "perPersonAmount": "That's ${amount} per person",
     "noPendingItems": "No pending items",
     "selectItemToContinue": "Select an item to continue",
@@ -229,7 +229,6 @@
     "totalLabel": "Total:",
     "yourShareLabel": "Your share:",
     "yourAmountLabel": "Your amount:",
-    "onlyRemainingToPay": "Only ${amount} left to pay",
     "tipLabel": "Tip",
     "underMinimumWarning": "You haven't reached the minimum purchase!",
     "totalSummaryTitle": "Total Summary",
@@ -239,7 +238,15 @@
     "yourShareBreakdown": "Your share",
     "yourAmountBreakdown": "Your amount",
     "tipBreakdown": "+ Tip",
-    "serviceCommissionBreakdown": "+ Service fee"
+    "serviceCommissionBreakdown": "+ Service fee",
+    "splitTitle": "Split what's left",
+    "yourShareTitle": "Your share",
+    "ofAmount": "of ${amount}",
+    "peopleUnit": "people",
+    "fewerPeople": "One fewer person",
+    "morePeople": "One more person",
+    "includesTip": "includes ${amount} tip",
+    "continueCta": "Continue"
   },
   "PaymentOptionsPage": {
     "subtitle": "Choose how you'd like to pay the bill",
@@ -271,6 +278,10 @@
     "refreshCta": "Refresh",
     "tableBillTitle": "Table Bill",
     "noOrdersYet": "No orders have been placed for this table yet",
+    "emptyBillTitle": "Your bill isn't ready yet",
+    "emptyBillMessage": "It will show up here once your server enters it",
+    "posOfflineTitle": "Restaurant offline",
+    "turnoClosedTitle": "The register is closed",
     "paidItemsTitle": "Paid Items",
     "hideCta": "Hide",
     "showCta": "Show",
@@ -280,5 +291,12 @@
     "paidLabel": "Paid:",
     "totalLabel": "Total:",
     "tableFullyPaid": "Bill fully paid!"
+  },
+  "Terms": {
+    "checkbox": "I have read and accept the <terms>Terms and Conditions</terms> and the <privacy>Privacy Notice</privacy>.",
+    "updateTitle": "We updated our terms",
+    "updateBody": "We updated our Terms and Conditions and Privacy Notice.",
+    "updateCta": "Got it",
+    "errorSave": "We couldn't save your acceptance. Please try again."
   }
 }
