@@ -10,6 +10,7 @@ import { useValidateAccess } from "@/hooks/useValidateAccess";
 import ValidationError from "@/components/ValidationError";
 import { authService } from "@/services/auth.service";
 import { useAuth } from "@/context/AuthContext";
+import TermsCheckbox from "@/components/TermsCheckbox";
 import { useGuest } from "@/context/GuestContext";
 
 type Step = "phone" | "verify" | "profile";
@@ -53,6 +54,7 @@ export default function AuthSelectionPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [age, setAge] = useState<number | "">("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   // Envío del SMS en curso: el paso de código se muestra de inmediato
   const [sendingCode, setSendingCode] = useState(false);
@@ -201,7 +203,7 @@ export default function AuthSelectionPage() {
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (age === "") return;
+    if (age === "" || !acceptedTerms) return;
     setError("");
     setLoading(true);
     try {
@@ -210,6 +212,7 @@ export default function AuthSelectionPage() {
         firstName,
         lastName,
         birthDate: `${birthYear}-01-01`,
+        acceptedTerms: true,
       });
       if (response.success) {
         await refreshProfile();
@@ -466,9 +469,15 @@ export default function AuthSelectionPage() {
                   ))}
                 </select>
               </div>
+              <TermsCheckbox
+                checked={acceptedTerms}
+                onChange={setAcceptedTerms}
+                disabled={loading}
+              />
+
               <button
                 type="submit"
-                disabled={loading || !firstName || age === ""}
+                disabled={loading || !firstName || age === "" || !acceptedTerms}
                 className="w-full bg-even-grass text-even-evergreen hover:opacity-90 py-3 rounded-full font-medium transition-opacity disabled:bg-even-grass/30 disabled:text-even-evergreen/40 disabled:cursor-not-allowed mt-6"
               >
                 {loading ? t("saving") : t("continueCta")}

@@ -13,7 +13,6 @@ import { useAgentStatus } from "../hooks/useAgentStatus";
 import { useRestaurant } from "../context/RestaurantContext";
 import POSBlockedModal from "./POSBlockedModal";
 import { isProfileComplete } from "@/utils/profile";
-import { getItemDisplayPrice } from "@/utils/commissionCalculator";
 import ItemCustomizations from "@/components/ItemCustomizations";
 import { getBackendOrigin } from "@even/api-client";
 
@@ -39,6 +38,7 @@ export default function CartView() {
   const hasActivePOS =
     agentStatus !== null && agentStatus.hasIntegration && agentStatus.isActive;
   const { restaurant } = useRestaurant();
+  const showImages = !!restaurant && restaurant.menu_show_images !== false;
 
   const { state: tableState } = useTable();
   const {
@@ -68,21 +68,15 @@ export default function CartView() {
   );
   const isPromoOnlyCart = cartState.items.length > 0 && !hasNonPromoItem;
 
-  // Precio unitario ya con la comisión Even incrustada (nunca se persiste,
-  // solo se muestra) — la franja depende del precio del propio ítem, así que
-  // es estable sin importar el resto del carrito.
   const displayUnitPrices = useMemo(() => {
     const map = new Map<string, number>();
     for (const item of cartState.items) {
       if (!item.cartItemId) continue;
-      const unitPrice = item.price + (item.extraPrice || 0);
-      map.set(item.cartItemId, getItemDisplayPrice(unitPrice));
+      map.set(item.cartItemId, item.price + (item.extraPrice || 0));
     }
     return map;
   }, [cartState.items]);
 
-  // Suma de (precio inflado × cantidad) por línea — es exactamente lo que
-  // el cliente ve por línea, así que sumado a mano cierra contra este total.
   const cartDisplayTotal = useMemo(() => {
     let sum = 0;
     for (const item of cartState.items) {
@@ -208,7 +202,7 @@ export default function CartView() {
                 </div>
               ) : (
                 <div>
-                  <div className="text-black font-medium text-sm md:text-base lg:text-lg flex gap-10 md:gap-12 lg:gap-[68px] justify-end translate-y-4">
+                  <div className={`text-black font-medium text-sm md:text-base lg:text-lg flex gap-10 md:gap-12 lg:gap-[68px] justify-end ${showImages ? "translate-y-4" : "mb-1 md:mb-2"}`}>
                     <span>{t("qtyLabel")}</span>
                     <span>{t("priceLabel")}</span>
                   </div>
@@ -234,25 +228,27 @@ export default function CartView() {
                                 : ""
                             }`}
                           >
-                            <div className="shrink-0">
-                              <div className="size-16 md:size-20 lg:size-24 bg-gray-300 rounded-sm md:rounded-md flex items-center justify-center hover:scale-105 transition-transform duration-200">
-                                {item.images &&
-                                item.images.length > 0 &&
-                                item.images[0] ? (
-                                  <img
-                                    src={item.images[0]}
-                                    alt="Dish preview"
-                                    className="w-full h-full object-cover rounded-sm md:rounded-md"
-                                  />
-                                ) : (
-                                  <img
-                                    src="/even/even-asterisk-evergreen.svg"
-                                    alt="Logo Even"
-                                    className="size-10 md:size-12 lg:size-14 object-contain"
-                                  />
-                                )}
+                            {showImages && (
+                              <div className="shrink-0">
+                                <div className="size-16 md:size-20 lg:size-24 bg-gray-300 rounded-sm md:rounded-md flex items-center justify-center hover:scale-105 transition-transform duration-200">
+                                  {item.images &&
+                                  item.images.length > 0 &&
+                                  item.images[0] ? (
+                                    <img
+                                      src={item.images[0]}
+                                      alt="Dish preview"
+                                      className="w-full h-full object-cover rounded-sm md:rounded-md"
+                                    />
+                                  ) : (
+                                    <img
+                                      src="/even/even-asterisk-evergreen.svg"
+                                      alt="Logo Even"
+                                      className="size-10 md:size-12 lg:size-14 object-contain"
+                                    />
+                                  )}
+                                </div>
                               </div>
-                            </div>
+                            )}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <h3 className="text-base md:text-lg lg:text-xl text-black capitalize">

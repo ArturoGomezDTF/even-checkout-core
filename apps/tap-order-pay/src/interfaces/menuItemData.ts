@@ -3,9 +3,6 @@ export interface CustomFieldOption {
   id: string;
   name: string;
   price: number;
-  // Precio con la comisión Even ya incrustada (ver commissionCalculator.js
-  // en el backend) — es lo que se muestra al cliente, nunca `price` directo.
-  display_price?: number;
   agotado?: boolean;
 }
 
@@ -16,6 +13,8 @@ export interface CustomField {
   options?: CustomFieldOption[];
   required?: boolean;
   maxSelections?: number;
+  // Solo checkboxes: mínimo a elegir; igual a maxSelections = número exacto
+  minSelections?: number;
   // Solo lo traen items sincronizados de un POS con addons/modificadores
   // (ej. Givex) — "addon" (con precio) vs "modifier" (sin precio, ej. tipo
   // de pan). Necesario para reconstruir addon_list/modifier_list al armar
@@ -31,7 +30,6 @@ export interface MenuItem {
   description: string | null;
   image_url: string | null;
   price: number;
-  display_price?: number;
   discount: number;
   custom_fields: CustomField[];
   is_available: boolean;
@@ -47,7 +45,6 @@ export interface MenuItemData {
   name: string;
   description: string;
   price: number;
-  display_price?: number;
   images: string[];
   features: string[];
   discount: number;

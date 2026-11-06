@@ -91,6 +91,8 @@ export interface WalletOrderRequest {
   items?: CartItemForPayment[];
   userDiscountId?: string;
   promoRedemptionId?: string;
+  // Servicio de origen de la orden (define la tarifa de comisión en el backend).
+  service?: string;
   // Flex Bill (dividir cuenta): le permiten al backend recalcular el monto real
   // a cobrar desde los dish_order de la mesa en vez de confiar en
   // baseAmount/amount. Opcionales: el resto de las apps no los envía.

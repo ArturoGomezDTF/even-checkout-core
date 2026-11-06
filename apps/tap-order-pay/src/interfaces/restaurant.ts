@@ -10,6 +10,8 @@ export interface Restaurant {
   phone: string | null;
   email: string | null;
   is_active: boolean;
+  // Override por sucursal (/complete); false = menú sin fotos de platillos
+  menu_show_images?: boolean;
   opening_hours?: {
     [key: string]: {
       is_closed: boolean;

@@ -76,6 +76,8 @@ export function createApiClient(config: ApiClientConfig): Requester {
             error: {
               message: "Sesión expirada. Por favor inicia sesión nuevamente.",
             },
+            // Sin token = rechazo real; si sigue, el refresh falló por red o 5xx.
+            ...(getAuthToken() ? {} : { status: 401 }),
           };
         }
 
